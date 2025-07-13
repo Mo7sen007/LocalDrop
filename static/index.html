@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File share</title>
+    <link rel="stylesheet" href="/static/style.css">
+
+
+</head>
+<body>
+
+    <div class="container">
+        <h1>Host dashboard</h1>
+    <form id="uploadForm" method="post" enctype="multipart/form-data" action="/upload">
+        <div>
+            <label for="fileEl">Upload file
+                <input type="file" name="file" id="fileEl">
+            </label><br>
+            <label for="pinCode">Pin:
+                <input type="text" name="pinCode" id="pinCode">
+            </label><br>
+            <label for="fileName">Name:
+                <input type="text" name="fileName" id="fname" required>
+            </label><br>
+        </div>
+        <button type="submit" id="submit-button">Submit</button>
+    </form>
+
+    <h2>Uploaded Files</h2>
+    <table id="tableOfContent" border="1"></table>
+    <br>
+    <a href="/download.html">Check downloads list</a>
+    </div>
+    <script src="/static/index.js"></script>
+
+</body>
+
+</html>
