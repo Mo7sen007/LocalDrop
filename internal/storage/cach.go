@@ -1,8 +1,6 @@
 package storage
 
-import (
-	"fileshare/internal/models"
-)
+import "fileshare/internal/models"
 
 var List []models.File
 

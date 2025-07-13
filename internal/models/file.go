@@ -44,7 +44,7 @@ func GetInitialListOfFiles(list *[]File) error {
 			Size:      info.Size(),
 			ModTime:   info.ModTime(),
 			Pin:       "",
-			Extension: getExtension(entry.Name()),
+			Extension: GetExtension(entry.Name()),
 			MIMEType:  "application/octet-stream",
 		}
 
@@ -53,20 +53,10 @@ func GetInitialListOfFiles(list *[]File) error {
 	}
 	return nil
 }
-
-func getExtension(fileName string) string {
+func GetExtension(fileName string) string {
 	dot := strings.LastIndex(fileName, ".")
 	if dot == -1 {
 		return ""
 	}
 	return fileName[dot+1:]
-}
-
-func GtFileById(id uuid.UUID, listOfFiles *[]File) (File, bool) {
-	for _, file := range *listOfFiles {
-		if file.ID == id {
-			return file, true
-		}
-	}
-	return File{}, false
 }

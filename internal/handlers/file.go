@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fileshare/internal/models"
+	"fileshare/internal/services"
 	"fileshare/internal/storage"
 	"fmt"
 	"mime"
@@ -26,7 +27,7 @@ func DownloadFileHandler(c *gin.Context) {
 		return
 	}
 
-	file, found := models.GtFileById(fileId, &listOfFiles)
+	file, found := services.GetFileById(fileId, &listOfFiles)
 	if !found {
 		c.String(http.StatusNotFound, "File not found")
 		return
@@ -99,7 +100,7 @@ func DeleteFileHandler(c *gin.Context) {
 		c.String(http.StatusBadRequest, "Invalid UUID format")
 		return
 	}
-	file, found := models.GtFileById(fileId, &listOfFiles)
+	file, found := services.GetFileById(fileId, &listOfFiles)
 	if !found {
 		c.String(http.StatusNotFound, "File not found")
 		return

@@ -5,7 +5,6 @@ import (
 	"fileshare/internal/storage"
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -21,25 +20,11 @@ func GetInitialListOfFiles(c *gin.Context) {
 	c.JSON(http.StatusOK, list)
 }
 
-func oldGetInitialListOfFiles(c *gin.Context) {
-	files, err := os.ReadDir("files")
-	var list []models.File
-	if err != nil {
-		c.String(http.StatusInternalServerError, fmt.Sprintf("error reading files:%v", err))
-		return
-	}
-	for _, file := range files {
-
-		if !file.IsDir() {
-			uploadedFile := models.File{
-				ID:   uuid.New(),
-				Name: file.Name(),
-				Path: "files/" + file.Name(),
-			}
-			list = append(list, uploadedFile)
-			fmt.Printf("added %s", file.Name())
+func GetFileById(id uuid.UUID, listOfFiles *[]models.File) (models.File, bool) {
+	for _, file := range *listOfFiles {
+		if file.ID == id {
+			return file, true
 		}
 	}
-
-	c.JSON(http.StatusOK, list)
+	return models.File{}, false
 }
