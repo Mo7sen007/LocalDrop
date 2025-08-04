@@ -45,11 +45,32 @@ func UploadFileHandler(c *gin.Context) {
 	listOfFiles := storage.List
 
 	uploaded, err := c.FormFile("file")
-
 	if err != nil {
 		c.String(http.StatusBadRequest, "File upload error: %v", err)
 		return
 	}
+
+	/*
+			file, err := uploaded.Open()
+		defer file.Close()
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Could not open uploaded file: %v", err)
+			return
+		}
+		buf, err := io.ReadAll(file)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Could not read uploaded file: %v", err)
+			return
+		}
+
+		// Reset reader since io.ReadAll consumes it
+		reader := bytes.NewReader(buf)
+		entropy, err := scripts.CalculateEntropy(buf)
+		if entropy > 7.6 {
+			c.String(http.StatusBadRequest, "Could not save file")
+		}
+	*/
+
 	pinCode := c.PostForm("pinCode")
 	name := c.PostForm("fileName") + "." + strings.Split(uploaded.Filename, ".")[1]
 
