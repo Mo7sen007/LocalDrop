@@ -1,6 +1,6 @@
 package main
 
-import "fileshare/cmd"
+import "github.com/Mo7sen007/LocalDrop/cmd"
 
 func main() {
 	cmd.Execute()

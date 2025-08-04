@@ -1,10 +1,11 @@
 package services
 
 import (
-	"fileshare/internal/models"
-	"fileshare/internal/storage"
 	"fmt"
 	"net/http"
+
+	"github.com/Mo7sen007/LocalDrop/internal/models"
+	"github.com/Mo7sen007/LocalDrop/internal/storage"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

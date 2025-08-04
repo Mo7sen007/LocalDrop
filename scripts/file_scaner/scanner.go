@@ -2,10 +2,11 @@ package filescaner
 
 import (
 	"bytes"
-	"fileshare/scripts"
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/Mo7sen007/LocalDrop/scripts"
 )
 
 type ScanResult struct {

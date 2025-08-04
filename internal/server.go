@@ -1,10 +1,11 @@
 package internal
 
 import (
-	"fileshare/internal/handlers"
-	"fileshare/internal/storage"
 	"fmt"
 	"net/http"
+
+	"github.com/Mo7sen007/LocalDrop/internal/handlers"
+	"github.com/Mo7sen007/LocalDrop/internal/storage"
 
 	"github.com/gin-gonic/gin"
 )

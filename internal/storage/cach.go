@@ -1,6 +1,6 @@
 package storage
 
-import "fileshare/internal/models"
+import "github.com/Mo7sen007/LocalDrop/internal/models"
 
 var List []models.File
 

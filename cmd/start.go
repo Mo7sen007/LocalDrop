@@ -1,13 +1,14 @@
 package cmd
 
 import (
-	"fileshare/internal"
 	"fmt"
 	"os"
 	"os/exec"
 	"runtime"
 	"strconv"
 	"syscall"
+
+	"github.com/Mo7sen007/LocalDrop/internal"
 
 	"github.com/spf13/cobra"
 )

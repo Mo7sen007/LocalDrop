@@ -1,15 +1,16 @@
 package handlers
 
 import (
-	"fileshare/internal/models"
-	"fileshare/internal/services"
-	"fileshare/internal/storage"
 	"fmt"
 	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/Mo7sen007/LocalDrop/internal/models"
+	"github.com/Mo7sen007/LocalDrop/internal/services"
+	"github.com/Mo7sen007/LocalDrop/internal/storage"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
