@@ -4,7 +4,8 @@ function getfilesnames(){
         .then(data => createList(data))
 
     }
-    function createList(data){
+
+function createList(data){
         console.log(data)
         const ul = document.createElement("ul");
         data.forEach(element => {
@@ -15,13 +16,37 @@ function getfilesnames(){
         });
         document.body.appendChild(ul)
     }
-    function downloadFileById(fileId) {
-        const pin = prompt("Enter the pin code:");
-        if (pin !== null) {
-            const url = `/download/${fileId}?pin=${encodeURIComponent(pin)}`;
-            window.location.href = url;
-        }
+
+async function downloadFileById(fileId) {
+  try {
+    // Call API to check if file has a pin
+    const response = await fetch(`/hasPin/${fileId}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+
+    const data = await response.json(); // { id: ..., has_pin: true/false }
+
+    let pin = "";
+    console.log(data.hasPIN)
+    if (data.hasPIN) {
+      pin = prompt("Enter the pin code:");
+      if (pin === null) {
+        // user canceled
+        return;
+      }
+    }
+
+    // Trigger download
+    const url = `/download/${fileId}?pin=${encodeURIComponent(pin)}`;
+    window.location.href = url;
+  } catch (err) {
+    console.error("Failed to download file:", err);
+    alert("Something went wrong while downloading the file.");
+  }
+}
+
+
 function InitTable() {
             const table = document.getElementById("tableOfContent");
             table.innerHTML = ""; // clear any existing content
@@ -33,18 +58,18 @@ function InitTable() {
             });
         }
 
-        function updateTable(data) {
-            const table = document.getElementById("tableOfContent");
-            data.forEach(file => {
-                const row = table.insertRow();
-                row.insertCell().textContent = file.name;
-                const downloadCell = row.insertCell();
-                downloadCell.onclick = () => downloadFileById(file.id);
-                downloadCell.textContent = "Download";
-                downloadCell.setAttribute("class", "down")
-                row.insertCell().textContent = `${Number(file.size)/1000000} mb`;
-            });
-        }
+function updateTable(data) {
+    const table = document.getElementById("tableOfContent");
+    data.forEach(file => {
+        const row = table.insertRow();
+        row.insertCell().textContent = file.name;
+        const downloadCell = row.insertCell();
+        downloadCell.onclick = () => downloadFileById(file.id);
+        downloadCell.textContent = "Download";
+        downloadCell.setAttribute("class", "down")
+        row.insertCell().textContent = `${Number(file.size)/1000000} mb`;
+        });
+}
 
 window.onload = async () => {
     InitTable();
@@ -52,3 +77,4 @@ window.onload = async () => {
     const data = await response.json();
     updateTable(data);
 };
+

@@ -97,3 +97,18 @@ function checkName(name,names){
     return names.indexOf(name)
 }
         
+async function logoutUser(){
+  try {
+        const response = await fetch("/logout", { method: "POST" });
+        if (response.ok) {
+            // Redirect to login page after successful logout
+            window.location.href = "/login";
+        } else {
+            const data = await response.json();
+            alert("Logout failed: " + data.error);
+        }
+    } catch (err) {
+        console.error("Error logging out:", err);
+        alert("Logout failed due to network error");
+    }
+}

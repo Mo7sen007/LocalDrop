@@ -142,3 +142,17 @@ func DeleteFileHandler(c *gin.Context) {
 	c.String(http.StatusOK, fmt.Sprintf("File '%s' deleted successfully", file.Name))
 
 }
+func HasPinHandler(c *gin.Context) {
+	listOfFiles := storage.List
+	fileIdStr := c.Param("id")
+	fileId, err := uuid.Parse(fileIdStr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Invalid UUID format")
+		return
+	}
+	hasPin := services.HasPinCode(fileId, &listOfFiles)
+	c.JSON(http.StatusOK, gin.H{
+		"hasPIN": hasPin,
+	})
+
+}

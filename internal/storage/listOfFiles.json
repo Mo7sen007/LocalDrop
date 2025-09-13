@@ -1,2 +1,12 @@
 [
+  {
+    "id": "c96a2f66-1082-44f5-aa99-0ff6a7c3760b",
+    "name": "test.pdf",
+    "path": "./files/test.pdf",
+    "size": 389264,
+    "pin": "",
+    "extension": ".pdf",
+    "mime_type": "application/pdf",
+    "mod_time": "2025-09-13T18:04:14.8465054+01:00"
+  }
 ]

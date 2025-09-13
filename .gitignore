@@ -1,3 +1,6 @@
 /files
 /file_scaner
 entropy.go
+/testing
+listOfFiles.json
+adminList.json

@@ -29,3 +29,8 @@ func GetFileById(id uuid.UUID, listOfFiles *[]models.File) (models.File, bool) {
 	}
 	return models.File{}, false
 }
+
+func HasPinCode(id uuid.UUID, listOfFiles *[]models.File) bool {
+	file, ok := GetFileById(id, listOfFiles)
+	return ok && file.Pin != ""
+}
