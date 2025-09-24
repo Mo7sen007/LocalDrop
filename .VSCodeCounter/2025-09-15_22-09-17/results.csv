@@ -1,0 +1,36 @@
+"filename", "language", "JavaScript", "HTML", "PostCSS", "Go", "Go Checksum File", "Go Module File", "Markdown", "comment", "blank", "total"
+"c:\projects\fileshare - light\README.md", "Markdown", 0, 0, 0, 0, 0, 0, 18, 0, 12, 30
+"c:\projects\fileshare - light\cmd\about.go", "Go", 0, 0, 0, 29, 0, 0, 0, 0, 8, 37
+"c:\projects\fileshare - light\cmd\add_admin.go", "Go", 0, 0, 0, 54, 0, 0, 0, 1, 12, 67
+"c:\projects\fileshare - light\cmd\close.go", "Go", 0, 0, 0, 37, 0, 0, 0, 1, 9, 47
+"c:\projects\fileshare - light\cmd\list_admin.go", "Go", 0, 0, 0, 39, 0, 0, 0, 0, 8, 47
+"c:\projects\fileshare - light\cmd\root.go", "Go", 0, 0, 0, 20, 0, 0, 0, 0, 6, 26
+"c:\projects\fileshare - light\cmd\start.go", "Go", 0, 0, 0, 62, 0, 0, 0, 1, 13, 76
+"c:\projects\fileshare - light\go.mod", "Go Module File", 0, 0, 0, 0, 0, 42, 0, 0, 4, 46
+"c:\projects\fileshare - light\go.sum", "Go Checksum File", 0, 0, 0, 0, 121, 0, 0, 0, 1, 122
+"c:\projects\fileshare - light\internal\handlers\admin.go", "Go", 0, 0, 0, 41, 0, 0, 0, 1, 10, 52
+"c:\projects\fileshare - light\internal\handlers\file.go", "Go", 0, 0, 0, 113, 0, 0, 0, 20, 26, 159
+"c:\projects\fileshare - light\internal\models\admin.go", "Go", 0, 0, 0, 11, 0, 0, 0, 0, 4, 15
+"c:\projects\fileshare - light\internal\models\file.go", "Go", 0, 0, 0, 55, 0, 0, 0, 0, 8, 63
+"c:\projects\fileshare - light\internal\models\folder.go", "Go", 0, 0, 0, 16, 0, 0, 0, 0, 4, 20
+"c:\projects\fileshare - light\internal\models\user.go", "Go", 0, 0, 0, 12, 0, 0, 0, 0, 4, 16
+"c:\projects\fileshare - light\internal\server.go", "Go", 0, 0, 0, 83, 0, 0, 0, 11, 19, 113
+"c:\projects\fileshare - light\internal\services\admin.go", "Go", 0, 0, 0, 27, 0, 0, 0, 0, 6, 33
+"c:\projects\fileshare - light\internal\services\file_service.go", "Go", 0, 0, 0, 29, 0, 0, 0, 0, 8, 37
+"c:\projects\fileshare - light\internal\services\middleware.go", "Go", 0, 0, 0, 19, 0, 0, 0, 1, 6, 26
+"c:\projects\fileshare - light\internal\services\testing\auth_test.go", "Go", 0, 0, 0, 44, 0, 0, 0, 6, 12, 62
+"c:\projects\fileshare - light\internal\services\testing\storage_test.go", "Go", 0, 0, 0, 51, 0, 0, 0, 9, 13, 73
+"c:\projects\fileshare - light\internal\storage\admin.go", "Go", 0, 0, 0, 42, 0, 0, 0, 0, 13, 55
+"c:\projects\fileshare - light\internal\storage\cach.go", "Go", 0, 0, 0, 10, 0, 0, 0, 0, 4, 14
+"c:\projects\fileshare - light\internal\storage\file_store.go", "Go", 0, 0, 0, 40, 0, 0, 0, 0, 12, 52
+"c:\projects\fileshare - light\main.go", "Go", 0, 0, 0, 5, 0, 0, 0, 0, 3, 8
+"c:\projects\fileshare - light\scripts\file_scaner\scanner.go", "Go", 0, 0, 0, 65, 0, 0, 0, 0, 13, 78
+"c:\projects\fileshare - light\static\download.html", "HTML", 0, 17, 0, 0, 0, 0, 0, 0, 5, 22
+"c:\projects\fileshare - light\static\download.js", "JavaScript", 66, 0, 0, 0, 0, 0, 0, 3, 12, 81
+"c:\projects\fileshare - light\static\index.html", "HTML", 0, 34, 0, 0, 0, 0, 0, 0, 6, 40
+"c:\projects\fileshare - light\static\index.js", "JavaScript", 92, 0, 0, 0, 0, 0, 0, 6, 16, 114
+"c:\projects\fileshare - light\static\login.css", "PostCSS", 0, 0, 49, 0, 0, 0, 0, 0, 7, 56
+"c:\projects\fileshare - light\static\login.html", "HTML", 0, 21, 0, 0, 0, 0, 0, 0, 2, 23
+"c:\projects\fileshare - light\static\login.js", "JavaScript", 21, 0, 0, 0, 0, 0, 0, 0, 4, 25
+"c:\projects\fileshare - light\static\style.css", "PostCSS", 0, 0, 75, 0, 0, 0, 0, 0, 14, 89
+"Total", "-", 179, 72, 124, 904, 121, 42, 18, 60, 304, 1824

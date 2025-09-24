@@ -67,7 +67,7 @@ func ScanPDF(path string) (ScanResult, error) {
 
 	for tag, count := range tagHits {
 
-		reason := fmt.Sprintf("⚠️ Found %d instance(s) of %s\n", count, tag)
+		reason := fmt.Sprintf("Found %d instance(s) of %s\n", count, tag)
 		report.Reason = append(report.Reason, reason)
 	}
 	report.Safe = safe

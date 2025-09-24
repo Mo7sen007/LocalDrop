@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/Mo7sen007/LocalDrop/internal/models"
+	"github.com/google/uuid"
 )
 
 func LoadFiles() ([]models.File, error) {
@@ -31,7 +32,31 @@ func LoadFiles() ([]models.File, error) {
 	return list, nil
 }
 
-func UpdateFiles(files []models.File) error {
+func TempLoadFiles() (map[uuid.UUID]models.File, error) {
+	filesMap := make(map[uuid.UUID]models.File)
+	jsonFile, err := os.Open("internal\\storage\\listOfFiles.json")
+
+	if err != nil {
+		return nil, fmt.Errorf("error opening json file: %v", err)
+	}
+	defer jsonFile.Close()
+	bytes, err := io.ReadAll(jsonFile)
+	if err != nil {
+		return nil, fmt.Errorf("error reading json file :%v ", err)
+	}
+	if err := json.Unmarshal(bytes, &filesMap); err != nil {
+		return nil, fmt.Errorf("error unmarshaling json: %v", err)
+	}
+	return filesMap, nil
+
+}
+
+func TempUpdateFiles(files map[uuid.UUID]models.File) error {
+	List = files
+
+}
+
+func UpdateFiles(files map[uuid.UUID]models.File) error {
 
 	List = files
 

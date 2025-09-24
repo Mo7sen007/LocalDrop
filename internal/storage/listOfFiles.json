@@ -8,5 +8,55 @@
     "extension": ".pdf",
     "mime_type": "application/pdf",
     "mod_time": "2025-09-13T18:04:14.8465054+01:00"
+  },
+  {
+    "id": "306a8ef2-4090-4a9b-a955-c293125937e1",
+    "name": "dsqfqzdsf.jpg",
+    "path": "./files/dsqfqzdsf.jpg",
+    "size": 66918,
+    "pin": "",
+    "extension": ".jpg",
+    "mime_type": "image/jpeg",
+    "mod_time": "2025-09-16T12:24:13.0656592+01:00"
+  },
+  {
+    "id": "a08366d6-84a0-48b6-9042-2513c7ec0d70",
+    "name": "tp1.pdf",
+    "path": "./files/tp1.pdf",
+    "size": 141951,
+    "pin": "",
+    "extension": ".pdf",
+    "mime_type": "application/pdf",
+    "mod_time": "2025-09-16T13:44:25.5752173+01:00"
+  },
+  {
+    "id": "bcb0030e-c372-4734-98a5-1b97b595e729",
+    "name": "tp1.docx",
+    "path": "./files/tp1.docx",
+    "size": 127044,
+    "pin": "",
+    "extension": ".docx",
+    "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "mod_time": "2025-09-16T13:44:30.8795099+01:00"
+  },
+  {
+    "id": "c35f3fb0-7f33-4ca3-a1f3-afc2c1069f84",
+    "name": "malware.eml",
+    "path": "./files/malware.eml",
+    "size": 29679,
+    "pin": "",
+    "extension": ".eml",
+    "mime_type": "",
+    "mod_time": "2025-09-20T15:39:48.9757514+01:00"
+  },
+  {
+    "id": "4890d39a-fd78-440e-86ec-8bd45a2f1ab4",
+    "name": "os_book.pdf",
+    "path": "./files/os_book.pdf",
+    "size": 499301,
+    "pin": "",
+    "extension": ".pdf",
+    "mime_type": "application/pdf",
+    "mod_time": "2025-09-22T07:45:56.391509+01:00"
   }
 ]

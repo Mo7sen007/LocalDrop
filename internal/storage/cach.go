@@ -1,8 +1,11 @@
 package storage
 
-import "github.com/Mo7sen007/LocalDrop/internal/models"
+import (
+	"github.com/Mo7sen007/LocalDrop/internal/models"
+	"github.com/google/uuid"
+)
 
-var List []models.File
+var List map[uuid.UUID]models.File
 
 func InitializeListOfFiles() (*[]models.File, error) {
 	err := models.GetInitialListOfFiles(&List)
