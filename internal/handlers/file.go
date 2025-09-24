@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"mime"
 	"net/http"
 	"os"
@@ -24,12 +25,14 @@ func DownloadFileHandler(c *gin.Context) {
 	pinCode := c.Query("pin")
 	fileId, err := uuid.Parse(fileIdStr)
 	if err != nil {
+		log.Printf("invalid UUID format:%v", err)
 		c.String(http.StatusBadRequest, "Invalid UUID format")
 		return
 	}
 
-	file, found := services.GetFileById(fileId, &listOfFiles)
+	file, found := services.GetFileByID(fileId, listOfFiles)
 	if !found {
+		log.Printf("File not found:%v", err)
 		c.String(http.StatusNotFound, "File not found")
 		return
 	}
@@ -47,6 +50,7 @@ func UploadFileHandler(c *gin.Context) {
 
 	uploaded, err := c.FormFile("file")
 	if err != nil {
+		log.Printf("File upload error:%v", err)
 		c.String(http.StatusBadRequest, "File upload error: %v", err)
 		return
 	}
@@ -78,12 +82,14 @@ func UploadFileHandler(c *gin.Context) {
 	filePath := "./files/" + name // uploaded.Filename
 
 	if err := c.SaveUploadedFile(uploaded, filePath); err != nil {
+		log.Printf("Could not save file:%v", err)
 		c.String(http.StatusInternalServerError, "Could not save file: %v", err)
 		return
 	}
 
 	info, err := os.Stat(filePath)
 	if err != nil {
+		log.Printf("Failed to get file metadata:%v", err)
 		c.String(http.StatusInternalServerError, "Failed to get file metadata: %v", err)
 		return
 	}
@@ -101,10 +107,13 @@ func UploadFileHandler(c *gin.Context) {
 		MIMEType:  mimeType,
 		ModTime:   info.ModTime(),
 	}
-	UpadtedlistOfFiles := append(listOfFiles, uploadedFile)
 
-	err = storage.UpdateFiles(UpadtedlistOfFiles)
+	listOfFiles[uploadedFile.ID] = uploadedFile
+	//UpadtedlistOfFiles := append(listOfFiles, uploadedFile)
+
+	err = storage.UpdateFiles(listOfFiles)
 	if err != nil {
+		log.Printf("Failed tp update:%v", err)
 		c.String(http.StatusInternalServerError, "Failed to update: %v", err)
 		return
 	}
@@ -119,26 +128,26 @@ func DeleteFileHandler(c *gin.Context) {
 	fileIdStr := c.Param("id")
 	fileId, err := uuid.Parse(fileIdStr)
 	if err != nil {
+		log.Printf("Invalid UUID format:%v", err)
 		c.String(http.StatusBadRequest, "Invalid UUID format")
 		return
 	}
-	file, found := services.GetFileById(fileId, &listOfFiles)
+	file, found := services.GetFileByID(fileId, listOfFiles)
 	if !found {
+		log.Printf("File not found:%v", err)
 		c.String(http.StatusNotFound, "File not found")
 		return
 	}
 	err = os.Remove(file.Path)
 	if err != nil {
+		log.Printf("Error deleting file:%v", err)
 		c.String(http.StatusInternalServerError, "Error deleting file")
 		return
 	}
-	for i, file := range listOfFiles {
-		if file.ID == fileId {
-			listOfFiles = append(listOfFiles[:i], listOfFiles[i+1:]...)
-			storage.UpdateFiles(listOfFiles)
-			break
-		}
-	}
+
+	delete(listOfFiles, fileId)
+	storage.UpdateFiles(listOfFiles)
+
 	c.String(http.StatusOK, fmt.Sprintf("File '%s' deleted successfully", file.Name))
 
 }
@@ -147,10 +156,19 @@ func HasPinHandler(c *gin.Context) {
 	fileIdStr := c.Param("id")
 	fileId, err := uuid.Parse(fileIdStr)
 	if err != nil {
+		log.Printf("Invalid UUID format :%v", err)
 		c.String(http.StatusBadRequest, "Invalid UUID format")
 		return
 	}
-	hasPin := services.HasPinCode(fileId, &listOfFiles)
+	file, found := services.GetFileByID(fileId, listOfFiles)
+
+	if !found {
+		log.Printf("File  is not present:%v", err)
+		c.String(http.StatusNotFound, "File is not present")
+		return
+	}
+
+	hasPin := services.HasPinCode(file)
 	c.JSON(http.StatusOK, gin.H{
 		"hasPIN": hasPin,
 	})

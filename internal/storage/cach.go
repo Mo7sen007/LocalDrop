@@ -5,12 +5,13 @@ import (
 	"github.com/google/uuid"
 )
 
-var List map[uuid.UUID]models.File
+var List = make(map[uuid.UUID]models.File)
 
-func InitializeListOfFiles() (*[]models.File, error) {
-	err := models.GetInitialListOfFiles(&List)
+func InitializeListOfFiles() (map[uuid.UUID]models.File, error) {
+	err := models.GetInitialListOfFiles(List)
 	if err != nil {
 		return nil, err
 	}
-	return &List, nil
+	UpdateFiles(List)
+	return List, nil
 }

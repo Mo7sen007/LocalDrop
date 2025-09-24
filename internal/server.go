@@ -8,6 +8,7 @@ import (
 
 	"github.com/Mo7sen007/LocalDrop/internal/handlers"
 	"github.com/Mo7sen007/LocalDrop/internal/services"
+	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
 	"github.com/Mo7sen007/LocalDrop/internal/storage"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -34,13 +35,18 @@ func getSecretKey() []byte {
 }
 
 func NewServer(authEnabled bool) *gin.Engine {
+	// Initialize logging
+	serverlog.InitLogToFile() // opens log file and sets log.SetOutput
+
 	gin.SetMode(gin.ReleaseMode)
 
 	// Initialize file storage - fail fast if this doesn't work
-	_, err := storage.InitializeListOfFiles()
+	list, err := storage.InitializeListOfFiles()
 	if err != nil {
-		log.Fatal("Could not initialize file list:", err)
+		log.Println("Could not initialize file list:", err)
+		log.Fatal(err) // exits program
 	}
+	log.Printf("Loaded %d files into storage\n", len(list))
 
 	router := gin.Default()
 	router.Static("/static", "./static")
@@ -48,36 +54,29 @@ func NewServer(authEnabled bool) *gin.Engine {
 
 	// Session management with secure secret key
 	store := cookie.NewStore(getSecretKey())
-	// Configure session options for security
 	store.Options(sessions.Options{
 		Path:     "/",
-		MaxAge:   86400 * 7, // 7 days
+		MaxAge:   86400 * 7,
 		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
+		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
 	})
 	router.Use(sessions.Sessions("localdrop_session", store))
 
 	// Public routes
-	router.GET("/", func(c *gin.Context) {
-		c.File("./static/download.html")
-	})
-
-	router.GET("/download", func(c *gin.Context) {
-		c.File("./static/download.html")
-	})
-
-	router.GET("/login", func(c *gin.Context) {
-		c.File("./static/login.html")
-	})
+	router.GET("/", func(c *gin.Context) { c.File("./static/download.html") })
+	router.GET("/download", func(c *gin.Context) { c.File("./static/download.html") })
+	router.GET("/login", func(c *gin.Context) { c.File("./static/login.html") })
 
 	// Public API routes
 	router.GET("/listOfFiles", func(c *gin.Context) {
 		listOfFiles, err := storage.LoadFiles()
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load files"})
-			return // Important: return after error response
+			log.Println("Failed to load files:", err) // logs to file
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
 		}
+		log.Printf("Returned %d files to client\n", len(listOfFiles))
 		c.JSON(http.StatusOK, listOfFiles)
 	})
 
@@ -91,7 +90,7 @@ func NewServer(authEnabled bool) *gin.Engine {
 		authGroup := router.Group("/", services.AuthMiddleware())
 		setupProtectedRoutes(authGroup)
 	} else {
-		setupProtectedRoutes(router.Group("/")) // make it explicit
+		setupProtectedRoutes(router.Group("/"))
 	}
 
 	return router

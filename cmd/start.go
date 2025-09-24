@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/Mo7sen007/LocalDrop/internal"
+	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
 	"github.com/spf13/cobra"
 )
 
@@ -67,6 +68,8 @@ func init() {
 }
 
 func startServer() {
+	serverlog.InitLogToFile()
+	defer serverlog.LogFile.Close()
 	router := internal.NewServer(authEnabled)
 	err := router.Run(":" + port)
 	if err != nil {

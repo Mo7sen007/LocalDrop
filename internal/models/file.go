@@ -20,7 +20,7 @@ type File struct {
 	ModTime   time.Time `json:"mod_time"`
 }
 
-func GetInitialListOfFiles(list *[]File) error {
+func GetInitialListOfFiles(list map[uuid.UUID]File) error {
 	files, err := os.ReadDir("./files")
 	if err != nil {
 		return fmt.Errorf("error reading directory: %v", err)
@@ -33,11 +33,11 @@ func GetInitialListOfFiles(list *[]File) error {
 		fullPath := "./files/" + entry.Name()
 		info, err := os.Stat(fullPath)
 		if err != nil {
-			fmt.Printf("error getting file info: %v\n", err)
+			fmt.Printf("error getting file metadata: %v\n", err)
 			continue
 		}
 
-		uploadedFile := File{
+		newFile := File{
 			ID:        uuid.New(),
 			Name:      entry.Name(),
 			Path:      fullPath,
@@ -47,9 +47,8 @@ func GetInitialListOfFiles(list *[]File) error {
 			Extension: GetExtension(entry.Name()),
 			MIMEType:  "application/octet-stream",
 		}
-
-		*list = append(*list, uploadedFile)
-		fmt.Printf("added %s\n", uploadedFile.Name)
+		list[newFile.ID] = newFile
+		fmt.Printf("added %s\n", newFile.Name)
 	}
 	return nil
 }

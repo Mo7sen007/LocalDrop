@@ -11,7 +11,8 @@ function InitTable() {
 
         async function updateTable(data) {
             const table = document.getElementById("tableOfContent");
-            data.forEach(file => {
+            const files = Object.values(data);
+            files.forEach(file => {
                 const row = table.insertRow();
                 row.insertCell().textContent = file.name;
                 const DeletCell = row.insertCell();
@@ -46,7 +47,8 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
 
     // Fetch existing files to check for duplicates
     let listRes = await fetch("/listOfFiles");
-    let listData = await listRes.json();
+    let Data = await listRes.json();
+    let listData = Object.values(Data);
     let duplicate;
     if(listData ===null){
         duplicate = false
@@ -81,12 +83,22 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
 
 
         // Initial table load
-        window.onload = async () => {
+    window.onload = async () => {
+        try {
             InitTable();
             const response = await fetch("/listOfFiles");
             const data = await response.json();
-            updateTable(data);
-        };
+            console.log(data)
+
+            if (!response.ok) {
+                console.error("Server error:", data.error);
+            } else {
+                updateTable(data);
+            }
+        } catch (err) {
+            console.error("Fetch failed:", err);
+        }
+    };
 async function deleteById(id){
     const response = await fetch(`delete/${id}`)
     const data = await response.text();

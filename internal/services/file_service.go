@@ -21,16 +21,11 @@ func GetInitialListOfFiles(c *gin.Context) {
 	c.JSON(http.StatusOK, list)
 }
 
-func GetFileById(id uuid.UUID, listOfFiles *[]models.File) (models.File, bool) {
-	for _, file := range *listOfFiles {
-		if file.ID == id {
-			return file, true
-		}
-	}
-	return models.File{}, false
+func GetFileByID(id uuid.UUID, List map[uuid.UUID]models.File) (models.File, bool) {
+	file, ok := List[id]
+	return file, ok
 }
 
-func HasPinCode(id uuid.UUID, listOfFiles *[]models.File) bool {
-	file, ok := GetFileById(id, listOfFiles)
-	return ok && file.Pin != ""
+func HasPinCode(file models.File) bool {
+	return file.Pin != ""
 }

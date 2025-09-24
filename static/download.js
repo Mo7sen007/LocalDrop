@@ -75,6 +75,7 @@ window.onload = async () => {
     InitTable();
     const response = await fetch("/listOfFiles");
     const data = await response.json();
-    updateTable(data);
+    const files = Object.values(data);
+    updateTable(files);
 };
 

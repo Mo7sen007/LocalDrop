@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/Mo7sen007/LocalDrop/internal/services"
@@ -19,9 +20,11 @@ func LoginHandler(c *gin.Context) {
 	authenticated, err := services.AuthAdmin(userName, password, adminFilePath)
 	if err != nil {
 		if errors.Is(err, services.ErrWrongPassword) || errors.Is(err, services.ErrUserNotFound) {
+			log.Printf("Invlaid email or password:%v", err)
 			c.String(http.StatusUnauthorized, "Invalid email or password")
 			return
 		}
+		log.Printf("Couldn't load list:%v", err)
 		c.String(http.StatusInternalServerError, "Couldn't load list")
 		return
 	}
@@ -30,6 +33,7 @@ func LoginHandler(c *gin.Context) {
 		session := sessions.Default(c)
 		session.Set("user_id", userName)
 		if err := session.Save(); err != nil {
+			log.Printf("Failed to save session:%v", err)
 			c.String(http.StatusInternalServerError, "Failed to save session")
 			return
 		}
@@ -44,6 +48,7 @@ func LogoutHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	session.Clear()
 	if err := session.Save(); err != nil {
+		log.Printf("Failed to logout:%v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to logout"})
 		return
 	}
