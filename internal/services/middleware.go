@@ -16,8 +16,6 @@ func AuthMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-
-		// (Optional) load user from DB if needed
 		c.Set("user_id", userID)
 
 		c.Next()

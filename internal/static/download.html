@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalDrop - Files</title>
+    <link rel="stylesheet" href="/static/download.css">
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <div class="logo">
+                <span class="logo-icon">📁</span>
+                <h1>LocalDrop</h1>
+            </div>
+            <nav class="header-nav">
+                <a href="/dashboard" class="nav-link">Dashboard</a>
+                <a href="/download" class="nav-link active">Files</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="page-header">
+            <h2>Available Files</h2>
+            <p class="page-description">Download files shared on this LocalDrop instance</p>
+        </div>
+
+        <div class="table-container">
+            <div class="table-header">
+                <h3>File List</h3>
+                <button id="refreshBtn" class="refresh-btn">
+                    <span class="refresh-icon">🔄</span>
+                    Refresh
+                </button>
+            </div>
+            <div class="table-wrapper">
+                <table id="tableOfContent">
+                    <!-- Table content will be populated by JavaScript -->
+                </table>
+                <div id="loading" class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading files...</p>
+                </div>
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-icon">📄</div>
+                    <h3>No files available</h3>
+                    <p>There are currently no files shared on this instance.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pin Modal -->
+    <div id="pinModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Enter PIN</h3>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>This file is protected. Please enter the PIN to download:</p>
+                <input type="password" id="pinInput" placeholder="Enter PIN" maxlength="10">
+                <div class="modal-actions">
+                    <button id="cancelPin" class="btn-secondary">Cancel</button>
+                    <button id="submitPin" class="btn-primary">Download</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/header.js"></script>
+    <script src="/static/download.js"></script>
+</body>
+</html>

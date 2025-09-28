@@ -37,7 +37,7 @@ func LoginHandler(c *gin.Context) {
 			c.String(http.StatusInternalServerError, "Failed to save session")
 			return
 		}
-
+		log.Printf("Login successful for admin:%s", userName)
 		c.Redirect(http.StatusFound, "/dashboard")
 		return
 	}
@@ -52,5 +52,6 @@ func LogoutHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to logout"})
 		return
 	}
+	log.Printf("logged out sucssessful")
 	c.JSON(http.StatusOK, gin.H{"message": "logged out"})
 }

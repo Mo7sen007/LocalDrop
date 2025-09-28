@@ -37,9 +37,12 @@ func DownloadFileHandler(c *gin.Context) {
 		return
 	}
 	if pinCode == file.Pin {
+		log.Printf("Sent %s with size of %d", file.Name, file.Size)
 		c.FileAttachment(file.Path, file.Name)
+		return
 	} else {
 		c.String(http.StatusBadRequest, "pin code is incorrect")
+		return
 	}
 
 }
@@ -54,27 +57,6 @@ func UploadFileHandler(c *gin.Context) {
 		c.String(http.StatusBadRequest, "File upload error: %v", err)
 		return
 	}
-
-	/*
-			file, err := uploaded.Open()
-		defer file.Close()
-		if err != nil {
-			c.String(http.StatusInternalServerError, "Could not open uploaded file: %v", err)
-			return
-		}
-		buf, err := io.ReadAll(file)
-		if err != nil {
-			c.String(http.StatusInternalServerError, "Could not read uploaded file: %v", err)
-			return
-		}
-
-		// Reset reader since io.ReadAll consumes it
-		reader := bytes.NewReader(buf)
-		entropy, err := scripts.CalculateEntropy(buf)
-		if entropy > 7.6 {
-			c.String(http.StatusBadRequest, "Could not save file")
-		}
-	*/
 
 	pinCode := c.PostForm("pinCode")
 	name := c.PostForm("fileName") + "." + strings.Split(uploaded.Filename, ".")[1]
@@ -109,7 +91,6 @@ func UploadFileHandler(c *gin.Context) {
 	}
 
 	listOfFiles[uploadedFile.ID] = uploadedFile
-	//UpadtedlistOfFiles := append(listOfFiles, uploadedFile)
 
 	err = storage.UpdateFiles(listOfFiles)
 	if err != nil {
@@ -117,7 +98,7 @@ func UploadFileHandler(c *gin.Context) {
 		c.String(http.StatusInternalServerError, "Failed to update: %v", err)
 		return
 	}
-
+	log.Printf("Recieved file with name %s and size %d", uploadedFile.Name, uploadedFile.Size)
 	c.String(http.StatusOK, fmt.Sprintf("'%s' uploaded!", uploaded.Filename))
 }
 
@@ -147,7 +128,7 @@ func DeleteFileHandler(c *gin.Context) {
 
 	delete(listOfFiles, fileId)
 	storage.UpdateFiles(listOfFiles)
-
+	log.Printf("Deleted file with ID:%s ", fileIdStr)
 	c.String(http.StatusOK, fmt.Sprintf("File '%s' deleted successfully", file.Name))
 
 }

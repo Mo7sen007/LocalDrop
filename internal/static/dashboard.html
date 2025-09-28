@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalDrop - Dashboard</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <div class="logo">
+                <span class="logo-icon">📁</span>
+                <h1>LocalDrop</h1>
+            </div>
+            <nav class="header-nav">
+                <a href="/dashboard" class="nav-link active">Dashboard</a>
+                <a href="/download" class="nav-link">Files</a>
+                <button id="logoutBtn" class="logout-btn">
+                    <span class="logout-icon">🚪</span>
+                    Logout
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="page-header">
+            <h2>Host Dashboard</h2>
+            <p class="page-description">Upload and manage your shared files</p>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- Upload Section -->
+            <div class="upload-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Upload File</h3>
+                        <span class="upload-icon">📤</span>
+                    </div>
+                    <form id="uploadForm" method="post" enctype="multipart/form-data" action="/upload">
+                        <div class="form-group">
+                            <label for="fileEl">Select File</label>
+                            <div class="file-input-wrapper">
+                                <input type="file" name="file" id="fileEl" required>
+                                <div class="file-input-display">
+                                    <span class="file-icon">📎</span>
+                                    <span class="file-text">Choose a file...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="fileName">File Name</label>
+                            <input type="text" name="fileName" id="fileName" placeholder="Enter file name (without extension)" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="pinCode">PIN Protection (Optional)</label>
+                            <input type="text" name="pinCode" id="pinCode" placeholder="Enter PIN to protect file" maxlength="10">
+                            <small class="form-help">Leave empty for public access</small>
+                        </div>
+
+                        <button type="submit" id="submitButton" class="upload-btn">
+                            <span class="btn-text">Upload File</span>
+                            <span class="btn-spinner" style="display: none;">⏳</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Files Section -->
+            <div class="files-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Uploaded Files</h3>
+                        <div class="card-actions">
+                            <button id="refreshBtn" class="icon-btn" title="Refresh">
+                                <span class="refresh-icon">🔄</span>
+                            </button>
+                            <a href="/download" class="icon-btn" title="View Download Page">
+                                <span>🔗</span>
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="table-wrapper">
+                        <table id="tableOfContent">
+                            <!-- Table content will be populated by JavaScript -->
+                        </table>
+                        <div id="loading" class="loading">
+                            <div class="loading-spinner"></div>
+                            <p>Loading files...</p>
+                        </div>
+                        <div id="emptyState" class="empty-state" style="display: none;">
+                            <div class="empty-icon">📄</div>
+                            <h4>No files uploaded yet</h4>
+                            <p>Upload your first file using the form above.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Confirm Deletion</h3>
+                <button class="modal-close" id="closeDeleteModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="warning-icon">⚠️</div>
+                <p>Are you sure you want to delete this file?</p>
+                <p class="file-name-display" id="fileNameToDelete"></p>
+                <p class="warning-text">This action cannot be undone.</p>
+                <div class="modal-actions">
+                    <button id="cancelDelete" class="btn-secondary">Cancel</button>
+                    <button id="confirmDelete" class="btn-danger">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success/Error Toast -->
+    <div id="toast" class="toast">
+        <div class="toast-content">
+            <span class="toast-icon"></span>
+            <span class="toast-message"></span>
+        </div>
+    </div>
+
+    <script src="/static/dashboard.js"></script>
+</body>
+</html>

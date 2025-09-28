@@ -2,6 +2,8 @@ package internal
 
 import (
 	"crypto/rand"
+	"embed"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -15,11 +17,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+//go:embed static/*
+var staticFS embed.FS
+
 // generateSecretKey generates a cryptographically secure random key
 func generateSecretKey() []byte {
 	key := make([]byte, 32) // 32 bytes = 256 bits
 	if _, err := rand.Read(key); err != nil {
 		log.Fatal("Failed to generate secret key:", err)
+		return nil
 	}
 	return key
 }
@@ -39,7 +45,10 @@ func NewServer(authEnabled bool) *gin.Engine {
 	serverlog.InitLogToFile() // opens log file and sets log.SetOutput
 
 	gin.SetMode(gin.ReleaseMode)
-
+	entries, _ := fs.ReadDir(staticFS, "static")
+	for _, e := range entries {
+		log.Println("Embedded file:", e.Name())
+	}
 	// Initialize file storage - fail fast if this doesn't work
 	list, err := storage.InitializeListOfFiles()
 	if err != nil {
@@ -49,7 +58,13 @@ func NewServer(authEnabled bool) *gin.Engine {
 	log.Printf("Loaded %d files into storage\n", len(list))
 
 	router := gin.Default()
-	router.Static("/static", "./static")
+	staticSubFS, err := fs.Sub(staticFS, "static")
+	if err != nil {
+		log.Fatal("Failed to create static sub-filesystem:", err)
+	}
+
+	router.StaticFS("/static", http.FS(staticSubFS))
+
 	router.MaxMultipartMemory = 8 << 20 // 8 MiB
 
 	// Session management with secure secret key
@@ -64,9 +79,15 @@ func NewServer(authEnabled bool) *gin.Engine {
 	router.Use(sessions.Sessions("localdrop_session", store))
 
 	// Public routes
-	router.GET("/", func(c *gin.Context) { c.File("./static/download.html") })
-	router.GET("/download", func(c *gin.Context) { c.File("./static/download.html") })
-	router.GET("/login", func(c *gin.Context) { c.File("./static/login.html") })
+	router.GET("/", func(c *gin.Context) {
+		c.FileFromFS("download.html", http.FS(staticSubFS))
+	})
+	router.GET("/download", func(c *gin.Context) {
+		c.FileFromFS("download.html", http.FS(staticSubFS))
+	})
+	router.GET("/login", func(c *gin.Context) {
+		c.FileFromFS("login.html", http.FS(staticSubFS))
+	})
 
 	// Public API routes
 	router.GET("/listOfFiles", func(c *gin.Context) {
@@ -98,12 +119,13 @@ func NewServer(authEnabled bool) *gin.Engine {
 
 // setupProtectedRoutes sets up routes that may or may not require auth
 func setupProtectedRoutes(group *gin.RouterGroup) {
+	staticSubFS, _ := fs.Sub(staticFS, "static")
 	group.GET("/dashboard", func(c *gin.Context) {
-		c.File("./static/index.html")
+		c.FileFromFS("dashboard.html", http.FS(staticSubFS))
 	})
 
 	group.GET("/admin", func(c *gin.Context) {
-		c.File("./static/index.html")
+		c.FileFromFS("dashboard.html", http.FS(staticSubFS))
 	})
 
 	group.POST("/upload", handlers.UploadFileHandler)
