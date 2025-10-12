@@ -204,15 +204,22 @@ LocalDrop/
 # Build for current platform
 go build -o localdrop
 
-# Build for Windows
-GOOS=windows GOARCH=amd64 go build -o localdrop.exe
+# Cross-compile for other platforms:
 
-# Build for Linux
-GOOS=linux GOARCH=amd64 go build -o localdrop
+# Windows (64-bit)
+GOOS=windows GOARCH=amd64 go build -o localdrop-windows-amd64.exe
 
-# Build for macOS
-GOOS=darwin GOARCH=amd64 go build -o localdrop
+# Linux (64-bit)
+GOOS=linux GOARCH=amd64 go build -o localdrop-linux-amd64
+
+# macOS (Intel)
+GOOS=darwin GOARCH=amd64 go build -o localdrop-macos-amd64
+
+# macOS (Apple Silicon - M1/M2)
+GOOS=darwin GOARCH=arm64 go build -o localdrop-macos-arm64
 ```
+
+**Note:** Go automatically uses the correct build tags (`start_windows.go` or `start_unix.go`) based on the target platform.
 
 ### Running Tests
 
