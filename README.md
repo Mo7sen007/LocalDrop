@@ -268,7 +268,7 @@ localdrop start --port 3000
 
 ## 📧 Contact
 
-Mohamed Mohsen - [@Mo7sen007](https://github.com/Mo7sen007)
+Amir Boujneh - [@Mo7sen007](https://github.com/Mo7sen007)
 
 Project Link: [https://github.com/Mo7sen007/LocalDrop](https://github.com/Mo7sen007/LocalDrop)
 
