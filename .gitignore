@@ -1,7 +1,28 @@
-/files
-/file_scaner
-entropy.go
-/testing
-internal\storage\listOfFiles.json
+# Binaries
+*.exe
+localdrop
+localdrop.exe
+
+# Runtime files 
+*.pid
+*.log
+files/
 adminList.json
-localdrop.log
+listOfFiles.json
+
+# Testing
+internal/services/testing/
+
+# IDE
+.vscode/
+.VSCodeCounter/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+scripts/
+.hintrc

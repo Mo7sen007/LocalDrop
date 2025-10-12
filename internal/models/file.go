@@ -2,10 +2,13 @@ package models
 
 import (
 	"fmt"
+	"mime"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/Mo7sen007/LocalDrop/internal/paths"
 	"github.com/google/uuid"
 )
 
@@ -21,20 +24,34 @@ type File struct {
 }
 
 func GetInitialListOfFiles(list map[uuid.UUID]File) error {
-	files, err := os.ReadDir("./files")
+	filesPath, err := paths.GetFilesPath()
+	if err != nil {
+		return fmt.Errorf("failed to get files path: %v", err)
+	}
+
+	filesDir := filepath.Clean(filesPath)
+
+	files, err := os.ReadDir(filesDir)
 	if err != nil {
 		return fmt.Errorf("error reading directory: %v", err)
 	}
+
 	for _, entry := range files {
 		if entry.IsDir() {
 			continue
 		}
 
-		fullPath := "./files/" + entry.Name()
+		fullPath := filepath.Join(filesDir, entry.Name())
 		info, err := os.Stat(fullPath)
 		if err != nil {
 			fmt.Printf("error getting file metadata: %v\n", err)
 			continue
+		}
+
+		ext := filepath.Ext(entry.Name())
+		mimeType := mime.TypeByExtension(ext)
+		if mimeType == "" {
+			mimeType = "application/octet-stream"
 		}
 
 		newFile := File{
@@ -44,8 +61,8 @@ func GetInitialListOfFiles(list map[uuid.UUID]File) error {
 			Size:      info.Size(),
 			ModTime:   info.ModTime(),
 			Pin:       "",
-			Extension: GetExtension(entry.Name()),
-			MIMEType:  "application/octet-stream",
+			Extension: ext,
+			MIMEType:  mimeType,
 		}
 		list[newFile.ID] = newFile
 		fmt.Printf("added %s\n", newFile.Name)

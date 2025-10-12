@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/Mo7sen007/LocalDrop/internal/paths"
 	"github.com/spf13/cobra"
 )
 
@@ -12,7 +13,12 @@ var closeCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop the background server",
 	Run: func(cmd *cobra.Command, args []string) {
-		pidData, err := os.ReadFile("fileshare.pid")
+		pidFilePath, err := paths.GetPidFilePath()
+		if err != nil {
+			fmt.Printf("Could not find file path %v", err)
+			return
+		}
+		pidData, err := os.ReadFile(pidFilePath)
 		if err != nil {
 			fmt.Println("Could not read PID file. Is the server running?")
 			return
@@ -30,13 +36,12 @@ var closeCmd = &cobra.Command{
 			return
 		}
 
-		// Kill the process
 		if err := process.Kill(); err != nil {
 			fmt.Println("Failed to stop server:", err)
 			return
 		}
 
-		os.Remove("fileshare.pid")
+		os.Remove(pidFilePath)
 		fmt.Println("Fileshare server stopped")
 	},
 }

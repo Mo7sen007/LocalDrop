@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/Mo7sen007/LocalDrop/internal/models"
+	"github.com/Mo7sen007/LocalDrop/internal/paths"
 	"github.com/Mo7sen007/LocalDrop/internal/services"
 	"github.com/Mo7sen007/LocalDrop/internal/storage"
 
@@ -60,8 +61,12 @@ func UploadFileHandler(c *gin.Context) {
 
 	pinCode := c.PostForm("pinCode")
 	name := c.PostForm("fileName") + "." + strings.Split(uploaded.Filename, ".")[1]
-
-	filePath := "./files/" + name // uploaded.Filename
+	basePath, err := paths.GetFilesPath()
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Could not find base directory:%v", err)
+		return
+	}
+	filePath := basePath + name
 
 	if err := c.SaveUploadedFile(uploaded, filePath); err != nil {
 		log.Printf("Could not save file:%v", err)

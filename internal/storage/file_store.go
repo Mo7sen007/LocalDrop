@@ -7,12 +7,18 @@ import (
 	"os"
 
 	"github.com/Mo7sen007/LocalDrop/internal/models"
+	"github.com/Mo7sen007/LocalDrop/internal/paths"
 	"github.com/google/uuid"
 )
 
 func LoadFiles() (map[uuid.UUID]models.File, error) {
 	filesMap := make(map[uuid.UUID]models.File)
-	jsonFile, err := os.Open("internal\\storage\\listOfFiles.json")
+
+	jsonPath, err := paths.GetJsonFilePath()
+	if err != nil {
+		return nil, fmt.Errorf("error setting up: %v", err)
+	}
+	jsonFile, err := os.Open(jsonPath)
 
 	if err != nil {
 		return nil, fmt.Errorf("error opening json file: %v", err)
@@ -33,8 +39,12 @@ func LoadFiles() (map[uuid.UUID]models.File, error) {
 func UpdateFiles(files map[uuid.UUID]models.File) error {
 
 	List = files
+	jsonPath, err := paths.GetJsonFilePath()
+	if err != nil {
+		return fmt.Errorf("error setting up: %v", err)
+	}
 
-	jsonFile, err := os.Create("internal\\storage\\listOfFiles.json")
+	jsonFile, err := os.Create(jsonPath)
 	if err != nil {
 		return fmt.Errorf("error opening json file for writing: %v", err)
 	}

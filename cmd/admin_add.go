@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Mo7sen007/LocalDrop/internal/models"
+	"github.com/Mo7sen007/LocalDrop/internal/paths"
 	"github.com/Mo7sen007/LocalDrop/internal/storage"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
@@ -31,10 +32,13 @@ func init() {
 func addAdmin() error {
 	var userName string
 	var password string
-	var path string = "internal/storage/adminList.json" // Use / instead of \ for cross-platform
+	path, err := paths.GetAdminFilePath()
+	if err != nil {
+		return fmt.Errorf("could not find Admin file path")
+	}
 
 	fmt.Print("Enter the username: ")
-	_, err := fmt.Scanln(&userName)
+	_, err = fmt.Scanln(&userName)
 	if err != nil {
 		return fmt.Errorf("input error: %w", err)
 	}
@@ -57,7 +61,6 @@ func addAdmin() error {
 		CreatedAt:    time.Now(),
 	}
 
-	// Update the JSON file
 	if err := storage.UpdateAdmin(newAdmin, path); err != nil {
 		return fmt.Errorf("failed to update admin list: %w", err)
 	}

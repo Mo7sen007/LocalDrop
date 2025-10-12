@@ -9,8 +9,8 @@ import (
 	"os"
 
 	"github.com/Mo7sen007/LocalDrop/internal/handlers"
-	"github.com/Mo7sen007/LocalDrop/internal/services"
-	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
+	"github.com/Mo7sen007/LocalDrop/internal/middleware"
+	"github.com/Mo7sen007/LocalDrop/internal/paths"
 	"github.com/Mo7sen007/LocalDrop/internal/storage"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -20,9 +20,8 @@ import (
 //go:embed static/*
 var staticFS embed.FS
 
-// generateSecretKey generates a cryptographically secure random key
 func generateSecretKey() []byte {
-	key := make([]byte, 32) // 32 bytes = 256 bits
+	key := make([]byte, 32)
 	if _, err := rand.Read(key); err != nil {
 		log.Fatal("Failed to generate secret key:", err)
 		return nil
@@ -30,30 +29,31 @@ func generateSecretKey() []byte {
 	return key
 }
 
-// getSecretKey gets the secret key from environment or generates one
 func getSecretKey() []byte {
 	if key := os.Getenv("SESSION_SECRET"); key != "" {
 		return []byte(key)
 	}
-	// Generate a new key each time (sessions won't persist across restarts)
-	// For production, you should use a persistent key
+
 	return generateSecretKey()
 }
 
 func NewServer(authEnabled bool) *gin.Engine {
-	// Initialize logging
-	serverlog.InitLogToFile() // opens log file and sets log.SetOutput
 
 	gin.SetMode(gin.ReleaseMode)
+
 	entries, _ := fs.ReadDir(staticFS, "static")
 	for _, e := range entries {
 		log.Println("Embedded file:", e.Name())
 	}
-	// Initialize file storage - fail fast if this doesn't work
+
+	if err := paths.Initialize(); err != nil {
+		log.Fatal("Could not initialize storage:", err)
+	}
+
 	list, err := storage.InitializeListOfFiles()
 	if err != nil {
 		log.Println("Could not initialize file list:", err)
-		log.Fatal(err) // exits program
+		log.Fatal(err)
 	}
 	log.Printf("Loaded %d files into storage\n", len(list))
 
@@ -65,9 +65,8 @@ func NewServer(authEnabled bool) *gin.Engine {
 
 	router.StaticFS("/static", http.FS(staticSubFS))
 
-	router.MaxMultipartMemory = 8 << 20 // 8 MiB
+	router.MaxMultipartMemory = 8 << 20
 
-	// Session management with secure secret key
 	store := cookie.NewStore(getSecretKey())
 	store.Options(sessions.Options{
 		Path:     "/",
@@ -78,7 +77,6 @@ func NewServer(authEnabled bool) *gin.Engine {
 	})
 	router.Use(sessions.Sessions("localdrop_session", store))
 
-	// Public routes
 	router.GET("/", func(c *gin.Context) {
 		c.FileFromFS("download.html", http.FS(staticSubFS))
 	})
@@ -89,7 +87,6 @@ func NewServer(authEnabled bool) *gin.Engine {
 		c.FileFromFS("login.html", http.FS(staticSubFS))
 	})
 
-	// Public API routes
 	router.GET("/listOfFiles", func(c *gin.Context) {
 		listOfFiles, err := storage.LoadFiles()
 		if err != nil {
@@ -106,9 +103,8 @@ func NewServer(authEnabled bool) *gin.Engine {
 	router.GET("/download/:id", handlers.DownloadFileHandler)
 	router.GET("/hasPin/:id", handlers.HasPinHandler)
 
-	// Protected routes setup
 	if authEnabled {
-		authGroup := router.Group("/", services.AuthMiddleware())
+		authGroup := router.Group("/", middleware.AuthMiddleware())
 		setupProtectedRoutes(authGroup)
 	} else {
 		setupProtectedRoutes(router.Group("/"))
@@ -117,7 +113,6 @@ func NewServer(authEnabled bool) *gin.Engine {
 	return router
 }
 
-// setupProtectedRoutes sets up routes that may or may not require auth
 func setupProtectedRoutes(group *gin.RouterGroup) {
 	staticSubFS, _ := fs.Sub(staticFS, "static")
 	group.GET("/dashboard", func(c *gin.Context) {

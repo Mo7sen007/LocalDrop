@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/Mo7sen007/LocalDrop/internal/paths"
 	"github.com/Mo7sen007/LocalDrop/internal/services"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -14,8 +15,11 @@ func LoginHandler(c *gin.Context) {
 	userName := c.PostForm("username")
 	password := c.PostForm("password")
 
-	//only temporarly
-	adminFilePath := "internal/storage/adminList.json"
+	adminFilePath, err := paths.GetAdminFilePath()
+	if err != nil {
+		log.Printf("Couldn't get path")
+		return
+	}
 
 	authenticated, err := services.AuthAdmin(userName, password, adminFilePath)
 	if err != nil {
