@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/Mo7sen007/LocalDrop/internal/models"
 )
@@ -31,24 +32,33 @@ func LoadAdminList(path string) ([]models.Admin, error) {
 }
 
 func UpdateAdmin(newAdmin models.Admin, path string) error {
-	list, err := LoadAdminList(path)
+	var list []models.Admin
 
+	existingList, err := LoadAdminList(path)
 	if err != nil {
-		return fmt.Errorf("couldn't load list:%w", err)
+		list = []models.Admin{}
+	} else {
+		list = existingList
 	}
+
 	list = append(list, newAdmin)
+
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
 
 	jsonFile, err := os.Create(path)
 	if err != nil {
-		return fmt.Errorf("error opening json file for writing: %v", err)
+		return fmt.Errorf("error opening json file for writing: %w", err)
 	}
-
 	defer jsonFile.Close()
 
 	encoder := json.NewEncoder(jsonFile)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(list); err != nil {
-		return fmt.Errorf("error encoding json: %v", err)
+		return fmt.Errorf("error encoding json: %w", err)
 	}
+
 	return nil
 }

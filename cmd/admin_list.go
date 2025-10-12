@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Mo7sen007/LocalDrop/internal/paths"
 	"github.com/Mo7sen007/LocalDrop/internal/storage"
 	"github.com/spf13/cobra"
 )
@@ -13,14 +14,18 @@ var listAdmin = &cobra.Command{
 	Short: "List admins",
 	Long:  "Prints the list of admins with their information",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := printAdminList("internal/storage/adminList.json"); err != nil {
+		if err := printAdminList(); err != nil {
 			fmt.Println("Error reading admin list:", err)
 			return
 		}
 	},
 }
 
-func printAdminList(path string) error {
+func printAdminList() error {
+	path, err := paths.GetAdminFilePath()
+	if err != nil {
+		return fmt.Errorf("could not get admin list file path")
+	}
 	adminList, err := storage.LoadAdminList(path)
 	if err != nil {
 		return err
