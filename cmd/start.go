@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"runtime"
 	"strconv"
-	"syscall"
 
 	"github.com/Mo7sen007/LocalDrop/internal"
 	"github.com/Mo7sen007/LocalDrop/internal/paths"
@@ -40,11 +38,7 @@ var serveCmd = &cobra.Command{
 		}
 		bgCmd := exec.Command(execPath, args...)
 
-		if runtime.GOOS == "windows" {
-			bgCmd.SysProcAttr = &syscall.SysProcAttr{
-				HideWindow: true,
-			}
-		}
+		setProcAttributes(bgCmd)
 
 		bgCmd.Stdin = nil
 		bgCmd.Stdout = nil
