@@ -2,9 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
+	"strings"
 
 	"github.com/Mo7sen007/LocalDrop/internal"
 	"github.com/Mo7sen007/LocalDrop/internal/paths"
@@ -23,6 +26,24 @@ var serveCmd = &cobra.Command{
 		if debug {
 			fmt.Println("Starting server in debug mode (foreground)...")
 			startServer()
+			return
+		}
+		//temp, must be chnaged!
+		pidFile, err := paths.GetPidFilePath()
+		if err != nil {
+			fmt.Printf("Could not get pid file path: %v\n", err)
+			return
+		}
+
+		if isServerRunning(pidFile) {
+			fmt.Println("LocalDrop server is already running!")
+			fmt.Println("Use 'localdrop stop' to stop it first")
+			return
+		}
+
+		if isPortInUse(port) {
+			fmt.Printf("Port %s is already in use by another application.\n", port)
+			fmt.Println("Choose a different port with --port flag")
 			return
 		}
 
@@ -52,13 +73,8 @@ var serveCmd = &cobra.Command{
 
 		pid := bgCmd.Process.Pid
 
-		pidFile, err := paths.GetPidFilePath()
-		if err != nil {
-			fmt.Printf("Could not get pid file path: %v\n", err)
-			return
-		}
-
-		err = os.WriteFile(pidFile, []byte(strconv.Itoa(pid)), 0644)
+		pidInfo := fmt.Sprintf("%d:%s", pid, port)
+		err = os.WriteFile(pidFile, []byte(pidInfo), 0644)
 		if err != nil {
 			fmt.Println("Failed to write PID file:", err)
 			return
@@ -75,6 +91,55 @@ func init() {
 	serveCmd.Flags().StringVarP(&port, "port", "p", "8080", "Port to run the server on")
 	serveCmd.Flags().BoolVarP(&debug, "debug", "d", false, "Run in debug mode (foreground with console output)")
 	serveCmd.Flags().BoolVarP(&authEnabled, "auth", "a", false, "Enable admin authentication")
+}
+
+func isServerRunning(pidFile string) bool {
+	pidData, err := os.ReadFile(pidFile)
+	if err != nil {
+		return false
+	}
+
+	parts := strings.Split(strings.TrimSpace(string(pidData)), ":")
+	if len(parts) == 0 {
+		os.Remove(pidFile)
+		return false
+	}
+
+	pid, err := strconv.Atoi(parts[0])
+	if err != nil {
+		os.Remove(pidFile)
+		return false
+	}
+
+	if !isProcessRunning(pid) {
+		os.Remove(pidFile)
+		return false
+	}
+
+	return true
+}
+
+func isProcessRunning(pid int) bool {
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+
+	if runtime.GOOS == "windows" {
+		return true
+	} else {
+		err = process.Signal(os.Signal(nil))
+		return err == nil
+	}
+}
+
+func isPortInUse(port string) bool {
+	ln, err := net.Listen("tcp", ":"+port)
+	if err != nil {
+		return true
+	}
+	ln.Close()
+	return false
 }
 
 func startServer() {
