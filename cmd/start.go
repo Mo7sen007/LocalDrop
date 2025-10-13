@@ -5,7 +5,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"runtime"
 	"strconv"
 	"strings"
 
@@ -23,12 +22,13 @@ var serveCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start the sharing server",
 	Run: func(cmd *cobra.Command, args []string) {
+
 		if debug {
 			fmt.Println("Starting server in debug mode (foreground)...")
 			startServer()
 			return
 		}
-		//temp, must be chnaged!
+		//temp, must be changed!
 		pidFile, err := paths.GetPidFilePath()
 		if err != nil {
 			fmt.Printf("Could not get pid file path: %v\n", err)
@@ -117,20 +117,6 @@ func isServerRunning(pidFile string) bool {
 	}
 
 	return true
-}
-
-func isProcessRunning(pid int) bool {
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-
-	if runtime.GOOS == "windows" {
-		return true
-	} else {
-		err = process.Signal(os.Signal(nil))
-		return err == nil
-	}
 }
 
 func isPortInUse(port string) bool {
