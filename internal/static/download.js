@@ -82,14 +82,34 @@ async function loadFiles() {
         }
         
         const data = await response.json();
-        const files = Array.isArray(data) ? data : Object.values(data);
+        let items = [];
+
+        if (data) {
+            // Handle new Root object structure
+            if (data.name === "Root" || data.files || data.folders) {
+                const files = data.files || [];
+                const folders = data.folders || [];
+                
+                // Add type marker
+                files.forEach(f => f.type = 'file');
+                folders.forEach(f => f.type = 'folder');
+                
+                items = [...folders, ...files];
+            } else if (Array.isArray(data)) {
+                items = data;
+                items.forEach(f => f.type = 'file');
+            } else {
+                items = Object.values(data);
+                items.forEach(f => f.type = 'file');
+            }
+        }
         
         showLoading(false);
         
-        if (files.length === 0) {
+        if (items.length === 0) {
             showEmptyState();
         } else {
-            updateTable(files);
+            updateTable(items);
         }
         
     } catch (error) {
@@ -100,30 +120,39 @@ async function loadFiles() {
 }
 
 // Update table with file data
-function updateTable(files) {
+function updateTable(items) {
     const tbody = tableElement.querySelector('tbody');
     tbody.innerHTML = '';
     
-    files.forEach(file => {
+    items.forEach(item => {
         const row = document.createElement('tr');
         
         // Name cell
         const nameCell = document.createElement('td');
-        nameCell.textContent = file.name || 'Unknown';
-        nameCell.title = file.name || 'Unknown'; // Tooltip for long names
+        // Add icon based on type
+        const icon = item.type === 'folder' ? '📁 ' : '📄 ';
+        nameCell.textContent = icon + (item.name || 'Unknown');
+        nameCell.title = item.name || 'Unknown'; // Tooltip for long names
         row.appendChild(nameCell);
         
         // Download cell
         const downloadCell = document.createElement('td');
-        downloadCell.textContent = 'Download';
-        downloadCell.className = 'download-cell';
-        downloadCell.style.cursor = 'pointer';
-        downloadCell.addEventListener('click', () => handleFileDownload(file.id));
+        if (item.type === 'folder') {
+            downloadCell.textContent = 'Download Zip';
+            downloadCell.className = 'download-cell';
+            downloadCell.style.cursor = 'pointer';
+            downloadCell.addEventListener('click', () => handleFolderDownload(item.id));
+        } else {
+            downloadCell.textContent = 'Download';
+            downloadCell.className = 'download-cell';
+            downloadCell.style.cursor = 'pointer';
+            downloadCell.addEventListener('click', () => handleFileDownload(item.id));
+        }
         row.appendChild(downloadCell);
         
         // Size cell
         const sizeCell = document.createElement('td');
-        const formattedSize = formatFileSize(file.size);
+        const formattedSize = formatFileSize(item.size);
         sizeCell.innerHTML = `<span class="file-size">${formattedSize}</span>`;
         row.appendChild(sizeCell);
         
@@ -192,6 +221,22 @@ function downloadFile(fileId, pin = '') {
     } catch (error) {
         console.error('Download error:', error);
         showError('Failed to download file');
+    }
+}
+
+// Handle folder download
+function handleFolderDownload(folderId) {
+    try {
+        const url = `/download-folder/${folderId}`;
+        const link = document.createElement('a');
+        link.href = url;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch (error) {
+        console.error('Download error:', error);
+        showError('Failed to download folder');
     }
 }
 

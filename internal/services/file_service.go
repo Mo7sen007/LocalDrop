@@ -12,7 +12,7 @@ import (
 )
 
 func GetInitialListOfFiles(c *gin.Context) {
-	list, err := storage.LoadFiles()
+	list, err := storage.GetAllFiles()
 	if err != nil {
 		c.String(http.StatusInternalServerError, fmt.Sprintf("error loading files:%v", err))
 		return
@@ -21,11 +21,22 @@ func GetInitialListOfFiles(c *gin.Context) {
 	c.JSON(http.StatusOK, list)
 }
 
-func GetFileByID(id uuid.UUID, List map[uuid.UUID]models.File) (models.File, bool) {
-	file, ok := List[id]
-	return file, ok
+func GetAllFiles() []models.File {
+	files, err := storage.GetAllFiles()
+	if err != nil {
+		return []models.File{}
+	}
+	return files
 }
 
-func HasPinCode(file models.File) bool {
+func GetFileByID(id uuid.UUID) (*models.File, bool) {
+	file, err := storage.GetFile(id)
+	if err != nil {
+		return nil, false
+	}
+	return file, true
+}
+
+func HasPinCode(file *models.File) bool {
 	return file.Pin != ""
 }

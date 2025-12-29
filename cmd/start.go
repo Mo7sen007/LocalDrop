@@ -147,7 +147,8 @@ func startServer() {
 	serverlog.InitLogToFile()
 	defer serverlog.LogFile.Close()
 
-	router := internal.NewServer(authEnabled)
+	router, mdnsServer := internal.NewServer(authEnabled)
+	mdnsServer.Shutdown()
 
 	if debug {
 		fmt.Printf("Server ready at http://localhost:%s\n", port)

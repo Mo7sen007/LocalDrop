@@ -7,13 +7,12 @@ import (
 )
 
 type Folder struct {
-	ID        uuid.UUID  `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id" form:"id"`
-	Name      string     `gorm:"not null" json:"name" form:"name"`
+	ID        uuid.UUID  `json:"id" form:"id"`
+	Name      string     `json:"name" form:"name"`
 	PinCode   *string    `json:"pin_code,omitempty" form:"pin_code"`
-	CreatedAt time.Time  `gorm:"not null;default:now()" json:"created_at" form:"created_at"`
-	Size      int64      `gorm:"not null" json:"size" form:"size"`
-	SessionID uuid.UUID  `gorm:"not null" json:"session_id" form:"session_id"`
+	CreatedAt time.Time  `json:"created_at" form:"created_at"`
+	Size      int64      `json:"size" form:"size"`
 	ParentID  *uuid.UUID `json:"parent_id,omitempty" form:"parent_id"`
-	SubFolder []Folder   `gorm:"foreignKey:ParentID" json:"folders" form:"folders"`
-	Files     []File     `gorm:"foreignKey:FolderID" json:"files" form:"files"`
+	SubFolder []Folder   `json:"folders" form:"folders"`
+	Files     []File     `json:"files" form:"files"`
 }
