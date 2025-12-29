@@ -228,6 +228,15 @@ input[type="text"]:focus {
 }
 
 /* File Input Styles */
+.file-input-group {
+    display: flex;
+    gap: 1rem;
+}
+
+.file-input-group .file-input-wrapper {
+    flex: 1;
+}
+
 .file-input-wrapper {
     position: relative;
 }
@@ -651,3 +660,32 @@ tr:last-child td {
         width: 100%;
     }
 }
+/* Action Buttons */
+.btn-link {
+    display: inline-block;
+    padding: 0.4rem 0.8rem;
+    margin-right: 0.5rem;
+    text-decoration: none;
+    color: #007bff;
+    background: rgba(0, 123, 255, 0.1);
+    border: none;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-link:hover {
+    background: rgba(0, 123, 255, 0.2);
+    text-decoration: none;
+}
+
+.btn-link.delete {
+    color: #dc3545;
+    background: rgba(220, 53, 69, 0.1);
+}
+
+.btn-link.delete:hover {
+    background: rgba(220, 53, 69, 0.2);
+}
+

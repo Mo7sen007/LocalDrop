@@ -5,6 +5,7 @@ import (
 	"embed"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"os"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"github.com/hashicorp/mdns"
 )
 
 //go:embed static/*
@@ -37,8 +39,25 @@ func getSecretKey() []byte {
 	return generateSecretKey()
 }
 
-func NewServer(authEnabled bool) *gin.Engine {
+func NewServer(authEnabled bool) (*gin.Engine, *mdns.Server) {
+	// host, _ := os.Hostname()
+	service, err := mdns.NewMDNSService(
+		"LocalDrop",                           // instance name
+		"_http._tcp",                          // advertise as an HTTP service
+		"",                                    // domain
+		"localdrop.local.",                    // hostname to advertise
+		8080,                                  // port
+		[]net.IP{net.ParseIP("192.168.1.13")}, // auto-detect IP
+		[]string{"path=/"},                    // TXT records
+	)
+	if err != nil {
+		log.Fatalf("Failed to create mDNS service: %v", err)
+	}
 
+	mdnsServer, err := mdns.NewServer(&mdns.Config{Zone: service})
+	if err != nil {
+		log.Fatalf("Failed to start mDNS server: %v", err)
+	}
 	gin.SetMode(gin.ReleaseMode)
 
 	entries, _ := fs.ReadDir(staticFS, "static")
@@ -50,12 +69,9 @@ func NewServer(authEnabled bool) *gin.Engine {
 		log.Fatal("Could not initialize storage:", err)
 	}
 
-	list, err := storage.InitializeListOfFiles()
-	if err != nil {
-		log.Println("Could not initialize file list:", err)
-		log.Fatal(err)
+	if err := storage.Init("localdrop.db"); err != nil {
+		log.Fatal("Could not initialize database:", err)
 	}
-	log.Printf("Loaded %d files into storage\n", len(list))
 
 	router := gin.Default()
 	staticSubFS, err := fs.Sub(staticFS, "static")
@@ -87,20 +103,29 @@ func NewServer(authEnabled bool) *gin.Engine {
 		c.FileFromFS("login.html", http.FS(staticSubFS))
 	})
 
+	router.GET("/rootfilesandfolders", handlers.GetRootFilesAndFoldersHandler)
+	router.GET("/allfiles", handlers.GetAllFilesHandler)
+
 	router.GET("/listOfFiles", func(c *gin.Context) {
-		listOfFiles, err := storage.LoadFiles()
+		rootFolder, err := storage.GetRoot()
 		if err != nil {
-			log.Println("Failed to load files:", err) // logs to file
+			log.Println("Failed to load files:", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		log.Printf("Returned %d files to client\n", len(listOfFiles))
-		c.JSON(http.StatusOK, listOfFiles)
+		// Return the contents of the root folder (files and subfolders)
+		// The frontend likely expects a list of items, or a folder object.
+		// If the previous implementation returned a map/list of files, we might need to adjust.
+		// But since we are moving to a folder structure, returning the root folder object is best.
+		// However, dashboard.js expects a list of files.
+		// Let's check dashboard.js again.
+		c.JSON(http.StatusOK, rootFolder)
 	})
 
 	router.POST("/login", handlers.LoginHandler)
 	router.POST("/logout", handlers.LogoutHandler)
 	router.GET("/download/:id", handlers.DownloadFileHandler)
+	router.GET("/download-folder/:id", handlers.DownloadFolderHandler)
 	router.GET("/hasPin/:id", handlers.HasPinHandler)
 
 	if authEnabled {
@@ -110,7 +135,7 @@ func NewServer(authEnabled bool) *gin.Engine {
 		setupProtectedRoutes(router.Group("/"))
 	}
 
-	return router
+	return router, mdnsServer
 }
 
 func setupProtectedRoutes(group *gin.RouterGroup) {

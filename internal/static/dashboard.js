@@ -1,423 +1,292 @@
-// Global variables
-let currentFileId = null;
-let currentFileName = null;
-let isUploading = false;
+let currentFolderID = "00000000-0000-0000-0000-000000000000";
 
-// DOM elements
-const uploadForm = document.getElementById('uploadForm');
-const fileInput = document.getElementById('fileEl');
-const fileNameInput = document.getElementById('fileName');
-const pinInput = document.getElementById('pinCode');
-const submitButton = document.getElementById('submitButton');
-const tableElement = document.getElementById('tableOfContent');
-const loadingElement = document.getElementById('loading');
-const emptyStateElement = document.getElementById('emptyState');
-const refreshButton = document.getElementById('refreshBtn');
-const logoutButton = document.getElementById('logoutBtn');
-const deleteModal = document.getElementById('deleteModal');
-const fileNameToDelete = document.getElementById('fileNameToDelete');
-const toast = document.getElementById('toast');
-
-// Initialize the dashboard
-function initializeDashboard() {
-    initializeTable();
+document.addEventListener('DOMContentLoaded', () => {
     loadFiles();
-    setupEventListeners();
-}
 
-// Set up event listeners
-function setupEventListeners() {
-    // Upload form
-    uploadForm.addEventListener('submit', handleUpload);
-    fileInput.addEventListener('change', handleFileSelection);
-    
-    // Buttons
-    refreshButton.addEventListener('click', handleRefresh);
-    logoutButton.addEventListener('click', handleLogout);
-    
-    // Delete modal
-    document.getElementById('closeDeleteModal').addEventListener('click', hideDeleteModal);
-    document.getElementById('cancelDelete').addEventListener('click', hideDeleteModal);
-    document.getElementById('confirmDelete').addEventListener('click', handleConfirmDelete);
-    
-    // Close modal when clicking outside
-    deleteModal.addEventListener('click', (e) => {
-        if (e.target === deleteModal) {
-            hideDeleteModal();
-        }
-    });
-    
-    // Auto-generate filename from selected file
-    fileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file && !fileNameInput.value.trim()) {
-            const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-            fileNameInput.value = nameWithoutExt;
-        }
-    });
-    
-    // Handle Escape key to close modal
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && deleteModal.classList.contains('show')) {
-            hideDeleteModal();
-        }
-    });
-}
+    const uploadForm = document.getElementById('uploadForm');
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', handleUpload);
+    }
 
-// Handle file selection display
-function handleFileSelection() {
-    const fileInputWrapper = document.querySelector('.file-input-wrapper');
-    const fileText = document.querySelector('.file-text');
-    
-    if (fileInput.files.length > 0) {
-        const file = fileInput.files[0];
-        fileInputWrapper.classList.add('has-file');
-        fileText.textContent = file.name;
-        
-        // Auto-fill filename if empty
-        if (!fileNameInput.value.trim()) {
-            const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-            fileNameInput.value = nameWithoutExt;
+    // Refresh button
+    document.getElementById('refreshBtn')?.addEventListener('click', loadFiles);
+
+    // File Input Listeners
+    const fileInput = document.getElementById('fileEl');
+    const folderInput = document.getElementById('folderEl');
+    const fileNameInput = document.getElementById('fileName');
+
+    if (fileInput) {
+        fileInput.addEventListener('change', (e) => {
+            updateFileInputDisplay(e.target, 'file');
+            // Auto-fill name if single file
+            if (e.target.files.length === 1 && fileNameInput) {
+                fileNameInput.value = e.target.files[0].name;
+            }
+        });
+    }
+
+    if (folderInput) {
+        folderInput.addEventListener('change', (e) => {
+            updateFileInputDisplay(e.target, 'folder');
+            // Auto-fill name if single folder (though webkitdirectory usually selects contents)
+            if (e.target.files.length > 0 && fileNameInput) {
+                // Try to get the folder name from the first file's path
+                const path = e.target.files[0].webkitRelativePath;
+                const folderName = path.split('/')[0];
+                if (folderName) {
+                    fileNameInput.value = folderName;
+                }
+            }
+        });
+    }
+});
+
+function updateFileInputDisplay(input, type) {
+    const wrapper = input.closest('.file-input-wrapper');
+    const textSpan = wrapper.querySelector('.file-text');
+    if (!textSpan) return;
+
+    if (input.files && input.files.length > 0) {
+        if (input.files.length === 1) {
+            textSpan.textContent = input.files[0].name;
+        } else {
+            textSpan.textContent = `${input.files.length} ${type}s selected`;
         }
+        wrapper.classList.add('has-file');
     } else {
-        fileInputWrapper.classList.remove('has-file');
-        fileText.textContent = 'Choose a file...';
+        textSpan.textContent = type === 'file' ? 'Choose files...' : 'Choose folder...';
+        wrapper.classList.remove('has-file');
     }
 }
 
-// Handle file upload
+async function loadFiles() {
+    const table = document.getElementById('tableOfContent');
+    const loading = document.getElementById('loading');
+    const emptyState = document.getElementById('emptyState');
+
+    if (loading) loading.style.display = 'block';
+    if (table) table.innerHTML = '';
+    if (emptyState) emptyState.style.display = 'none';
+
+    try {
+        const response = await fetch('/listOfFiles');
+        if (!response.ok) throw new Error('Failed to fetch files');
+
+        let data = await response.json();
+        console.log('Fetched data:', data);
+        
+        // Handle null response from empty DB
+        if (!data) data = { files: [], folders: [] };
+        // If data is an array (legacy), wrap it
+        if (Array.isArray(data)) data = { files: data, folders: [] };
+        // If data is a map (legacy), convert to array
+        if (data && !data.files && !Array.isArray(data)) {
+             if (!data.files) data.files = [];
+             if (!data.folders) data.folders = [];
+        }
+
+        if (loading) loading.style.display = 'none';
+
+        const allItems = [...(data.folders || []), ...(data.files || [])];
+
+        if (allItems.length === 0) {
+            if (emptyState) emptyState.style.display = 'block';
+            return;
+        }
+
+        // Create Table Header
+        const thead = document.createElement('thead');
+        thead.innerHTML = `
+            <tr>
+                <th>Name</th>
+                <th>Size</th>
+                <th>Type</th>
+                <th>Date</th>
+                <th>Actions</th>
+            </tr>
+        `;
+        table.appendChild(thead);
+
+        // Create Table Body
+        const tbody = document.createElement('tbody');
+        
+        // Render Folders
+        if (data.folders) {
+            data.folders.forEach(folder => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>📁 ${folder.name}</td>
+                    <td>-</td>
+                    <td>Folder</td>
+                    <td>${new Date(folder.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <a href="/download-folder/${folder.id}" class="btn-link">Download</a>
+                        <button onclick="deleteFolder('${folder.id}', '${folder.name}')" class="btn-link delete">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Render Files
+        if (data.files) {
+            data.files.forEach(file => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${file.name}</td>
+                    <td>${formatBytes(file.size)}</td>
+                    <td>${file.extension || 'file'}</td>
+                    <td>${new Date(file.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <a href="/download/${file.id}" class="btn-link">Download</a>
+                        <button onclick="deleteFile('${file.id}', '${file.name}')" class="btn-link delete">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        table.appendChild(tbody);
+
+    } catch (error) {
+        console.error('Error loading files:', error);
+        if (loading) loading.style.display = 'none';
+        showToast('Failed to load files. Please try again.', 'error');
+    }
+}
+
+
+
 async function handleUpload(e) {
     e.preventDefault();
     
-    if (isUploading) return;
-    
-    const file = fileInput.files[0];
-    const fileName = fileNameInput.value.trim();
-    const pinCode = pinInput.value.trim();
-    
-    // Validation
-    if (!file) {
-        showToast('Please select a file', 'error');
+    const fileInput = document.getElementById('fileEl');
+    //const folderInput = document.getElementById('folderEl');
+    const pinInput = document.getElementById('pinCode');
+    const submitBtn = document.getElementById('submitButton');
+
+    const formData = new FormData();
+    let hasFiles = false;
+    formData.append('folderId',currentFolderID) //important
+    // 1. Add standard files
+    if (fileInput.files.length > 0) {
+        for (const file of fileInput.files) {
+            formData.append('files', file);
+            // For regular files, path is just the /name
+            formData.append('paths', "/" + file.name);
+        }
+        hasFiles = true;
+    }
+
+    // 2. Add folder files
+    if (folderInput.files.length > 0) {
+        for (const file of folderInput.files) {
+            formData.append('files', file);
+            // webkitRelativePath contains "Folder/Sub/File.txt"
+            formData.append('paths', file.webkitRelativePath);
+        }
+        hasFiles = true;
+    }
+
+    if (!hasFiles) {
+        showToast('Please select at least one file or folder.', 'error');
         return;
     }
-    
-    if (!fileName) {
-        showToast('Please enter a file name', 'error');
-        return;
-    }
-    
-    // Set loading state
-    setUploadingState(true);
-    
+
+    formData.append('pinCode', pinInput.value);
+
+    // UI Loading State
+    submitBtn.disabled = true;
+    const btnText = submitBtn.querySelector('.btn-text');
+    const btnSpinner = submitBtn.querySelector('.btn-spinner');
+    if (btnText) btnText.style.display = 'none';
+    if (btnSpinner) btnSpinner.style.display = 'inline-block';
+
     try {
-        // Get file extension and create full name
-        const fileExtension = file.name.split('.').pop();
-        const fullFileName = `${fileName}.${fileExtension}`;
-        
-        // Check for duplicate names
-        const isDuplicate = await checkForDuplicate(fullFileName);
-        if (isDuplicate) {
-            showToast(`A file named "${fullFileName}" already exists`, 'error');
-            setUploadingState(false);
-            return;
+        // Log FormData contents for debugging
+        console.log('=== FormData Contents ===');
+        for (let [key, value] of formData.entries()) {
+            if (value instanceof File) {
+                console.log(`${key}:`, {
+                    name: value.name,
+                    size: value.size,
+                    type: value.type
+                });
+            } else {
+                console.log(`${key}:`, value);
+            }
         }
+        console.log('========================');
         
-        // Prepare form data
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('fileName', fileName);
-        if (pinCode) {
-            formData.append('pinCode', pinCode);
-        }
-        
-        // Upload file
         const response = await fetch('/upload', {
             method: 'POST',
             body: formData
         });
-        
+
         if (response.ok) {
-            const result = await response.text();
-            showToast('File uploaded successfully!', 'success');
-            
-            // Reset form
-            resetForm();
-            
-            // Refresh file list
-            await loadFiles();
+            showToast('Upload successful!', 'success');
+            fileInput.value = '';
+            folderInput.value = '';
+            pinInput.value = '';
+            loadFiles(); // Refresh list
         } else {
-            const errorText = await response.text();
-            showToast(errorText || 'Upload failed', 'error');
+            const msg = await response.text();
+            throw new Error(msg);
         }
-        
     } catch (error) {
-        console.error('Upload error:', error);
-        showToast('Upload failed due to network error', 'error');
+        showToast('Upload failed: ' + error.message, 'error');
     } finally {
-        setUploadingState(false);
+        submitBtn.disabled = false;
+        if (btnText) btnText.style.display = 'inline-block';
+        if (btnSpinner) btnSpinner.style.display = 'none';
     }
 }
 
-// Check for duplicate filenames
-async function checkForDuplicate(fullFileName) {
+async function deleteFile(id, name) {
+    if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
+
     try {
-        const response = await fetch('/listOfFiles');
-        if (!response.ok) return false;
-        
-        const data = await response.json();
-        const files = Array.isArray(data) ? data : Object.values(data);
-        
-        return files.some(file => file.name === fullFileName);
-    } catch (error) {
-        console.error('Error checking duplicates:', error);
-        return false;
-    }
-}
-
-// Set uploading state
-function setUploadingState(uploading) {
-    isUploading = uploading;
-    submitButton.disabled = uploading;
-    
-    const btnText = document.querySelector('.btn-text');
-    const btnSpinner = document.querySelector('.btn-spinner');
-    
-    if (uploading) {
-        btnText.style.display = 'none';
-        btnSpinner.style.display = 'inline-block';
-    } else {
-        btnText.style.display = 'inline';
-        btnSpinner.style.display = 'none';
-    }
-}
-
-// Reset form
-function resetForm() {
-    uploadForm.reset();
-    fileNameInput.value = '';
-    pinInput.value = '';
-    
-    // Reset file input display
-    const fileInputWrapper = document.querySelector('.file-input-wrapper');
-    const fileText = document.querySelector('.file-text');
-    fileInputWrapper.classList.remove('has-file');
-    fileText.textContent = 'Choose a file...';
-}
-
-// Initialize table structure
-function initializeTable() {
-    tableElement.innerHTML = '';
-    
-    const thead = document.createElement('thead');
-    const headerRow = document.createElement('tr');
-    
-    const headers = ['Name', 'Delete', 'ID'];
-    headers.forEach(headerText => {
-        const th = document.createElement('th');
-        th.textContent = headerText;
-        headerRow.appendChild(th);
-    });
-    
-    thead.appendChild(headerRow);
-    tableElement.appendChild(thead);
-    
-    const tbody = document.createElement('tbody');
-    tableElement.appendChild(tbody);
-}
-
-// Load files from server
-async function loadFiles() {
-    showLoading(true);
-    hideEmptyState();
-    
-    try {
-        const response = await fetch('/listOfFiles');
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        const files = Array.isArray(data) ? data : Object.values(data);
-        
-        showLoading(false);
-        
-        if (files.length === 0) {
-            showEmptyState();
-        } else {
-            updateTable(files);
-        }
-        
-    } catch (error) {
-        console.error('Error loading files:', error);
-        showLoading(false);
-        showToast('Failed to load files', 'error');
-    }
-}
-
-// Update table with file data
-function updateTable(files) {
-    const tbody = tableElement.querySelector('tbody');
-    tbody.innerHTML = '';
-    
-    files.forEach(file => {
-        const row = document.createElement('tr');
-        
-        // Name cell
-        const nameCell = document.createElement('td');
-        nameCell.textContent = file.name || 'Unknown';
-        nameCell.title = file.name || 'Unknown'; // Tooltip for long names
-        row.appendChild(nameCell);
-        
-        // Delete cell
-        const deleteCell = document.createElement('td');
-        deleteCell.textContent = 'Delete';
-        deleteCell.className = 'delete-cell';
-        deleteCell.style.cursor = 'pointer';
-        deleteCell.addEventListener('click', () => handleDeleteClick(file.id, file.name));
-        row.appendChild(deleteCell);
-        
-        // ID cell
-        const idCell = document.createElement('td');
-        idCell.innerHTML = `<span class="file-id">${file.id}</span>`;
-        row.appendChild(idCell);
-        
-        tbody.appendChild(row);
-    });
-}
-
-// Handle delete button click
-function handleDeleteClick(fileId, fileName) {
-    currentFileId = fileId;
-    currentFileName = fileName;
-    fileNameToDelete.textContent = fileName;
-    showDeleteModal();
-}
-
-// Show delete confirmation modal
-function showDeleteModal() {
-    deleteModal.classList.add('show');
-    document.body.style.overflow = 'hidden'; // Prevent background scrolling
-}
-
-// Hide delete confirmation modal
-function hideDeleteModal() {
-    deleteModal.classList.remove('show');
-    currentFileId = null;
-    currentFileName = null;
-    document.body.style.overflow = ''; // Restore scrolling
-}
-
-// Handle confirm delete
-async function handleConfirmDelete() {
-    if (!currentFileId) return;
-    
-    try {
-        const response = await fetch(`/delete/${currentFileId}`);
-        const result = await response.text();
-        
+        const response = await fetch(`/delete/${id}`, { method: 'DELETE' });
         if (response.ok) {
-            showToast('File deleted successfully', 'success');
-            hideDeleteModal();
-            await loadFiles(); // Refresh the file list
+            showToast('File deleted', 'success');
+            loadFiles();
         } else {
-            showToast(result || 'Delete failed', 'error');
+            throw new Error('Delete failed');
         }
-        
     } catch (error) {
-        console.error('Delete error:', error);
-        showToast('Delete failed due to network error', 'error');
+        showToast(error.message, 'error');
     }
 }
 
-// Handle refresh button
-async function handleRefresh() {
-    refreshButton.disabled = true;
-    const refreshIcon = refreshButton.querySelector('.refresh-icon');
-    refreshIcon.style.animation = 'spin 1s linear infinite';
-    
-    await loadFiles();
-    
-    setTimeout(() => {
-        refreshButton.disabled = false;
-        refreshIcon.style.animation = '';
-    }, 500); // Small delay to show the animation
+async function deleteFolder(id, name) {
+    if (!confirm(`Are you sure you want to delete folder "${name}" and all its contents?`)) return;
+    // Note: You need to implement /deleteFolder/:id endpoint in backend
+    alert("Delete folder not implemented yet in backend");
 }
 
-// Handle logout
-async function handleLogout() {
-    try {
-        const response = await fetch('/logout', { method: 'POST' });
-        
-        if (response.ok) {
-            showToast('Logged out successfully', 'success');
-            setTimeout(() => {
-                window.location.href = '/login';
-            }, 1000);
-        } else {
-            const errorData = await response.json().catch(() => ({ error: 'Logout failed' }));
-            showToast(errorData.error || 'Logout failed', 'error');
-        }
-    } catch (error) {
-        console.error('Error logging out:', error);
-        showToast('Logout failed due to network error', 'error');
-    }
+function formatBytes(bytes, decimals = 2) {
+    if (!+bytes) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 }
 
-// Show/hide loading state
-function showLoading(show) {
-    if (show) {
-        loadingElement.style.display = 'flex';
-        tableElement.style.display = 'none';
-        emptyStateElement.style.display = 'none';
+function showToast(message, type = 'info') {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    
+    const content = toast.querySelector('.toast-content');
+    if (content) {
+        content.textContent = message;
     } else {
-        loadingElement.style.display = 'none';
-        tableElement.style.display = 'table';
-    }
-}
-
-// Show empty state
-function showEmptyState() {
-    emptyStateElement.style.display = 'block';
-    tableElement.style.display = 'none';
-}
-
-// Hide empty state
-function hideEmptyState() {
-    emptyStateElement.style.display = 'none';
-}
-
-// Show toast notification
-function showToast(message, type = 'success') {
-    const toastIcon = toast.querySelector('.toast-icon');
-    const toastMessage = toast.querySelector('.toast-message');
-    
-    // Set message and icon
-    toastMessage.textContent = message;
-    
-    if (type === 'success') {
-        toastIcon.textContent = '✅';
-        toast.className = 'toast success';
-    } else if (type === 'error') {
-        toastIcon.textContent = '❌';
-        toast.className = 'toast error';
+        toast.textContent = message;
     }
     
-    // Show toast
-    toast.classList.add('show');
-    
-    // Auto-hide after 4 seconds
+    toast.className = `toast show ${type}`;
     setTimeout(() => {
-        toast.classList.remove('show');
-    }, 4000);
+        toast.className = toast.className.replace('show', '');
+    }, 3000);
 }
-
-// Initialize when page loads
-document.addEventListener('DOMContentLoaded', initializeDashboard);
-
-// Fallback for older browsers
-window.addEventListener('load', () => {
-    if (!document.readyState || document.readyState === 'loading') {
-        initializeDashboard();
-    }
-});

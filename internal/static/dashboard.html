@@ -40,19 +40,28 @@
                     </div>
                     <form id="uploadForm" method="post" enctype="multipart/form-data" action="/upload">
                         <div class="form-group">
-                            <label for="fileEl">Select File</label>
-                            <div class="file-input-wrapper">
-                                <input type="file" name="file" id="fileEl" required>
-                                <div class="file-input-display">
-                                    <span class="file-icon">📎</span>
-                                    <span class="file-text">Choose a file...</span>
+                            <label>Select Content</label>
+                            <div class="file-input-group">
+                                <div class="file-input-wrapper">
+                                    <input type="file" name="file" id="fileEl" multiple webkitdirectory>
+                                    <div class="file-input-display">
+                                        <span class="file-icon">📄</span>
+                                        <span class="file-text">Choose files...</span>
+                                    </div>
                                 </div>
+                                <!--<div class="file-input-wrapper folder-wrapper">
+                                    <input type="file" name="folder" id="folderEl" webkitdirectory directory multiple>
+                                    <div class="file-input-display">
+                                        <span class="file-icon">📁</span>
+                                        <span class="file-text">Choose folder...</span>
+                                    </div>
+                                </div>-->
                             </div>
                         </div>
 
                         <div class="form-group">
                             <label for="fileName">File Name</label>
-                            <input type="text" name="fileName" id="fileName" placeholder="Enter file name (without extension)" required>
+                            <input type="text" name="fileName" id="fileName" placeholder="Enter file name (optional)">
                         </div>
 
                         <div class="form-group">
