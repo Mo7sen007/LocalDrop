@@ -9,6 +9,7 @@ localdrop.exe
 files/
 adminList.json
 listOfFiles.json
+localdrop.db
 
 # Testing
 internal/services/testing/

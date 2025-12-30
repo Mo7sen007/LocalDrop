@@ -22,6 +22,11 @@ import (
 //go:embed static/*
 var staticFS embed.FS
 
+type Server struct {
+	router *gin.Engine
+	dns    *mdns.Server
+}
+
 func generateSecretKey() []byte {
 	key := make([]byte, 32)
 	if _, err := rand.Read(key); err != nil {
@@ -94,16 +99,17 @@ func NewServer(authEnabled bool) (*gin.Engine, *mdns.Server) {
 	router.Use(sessions.Sessions("localdrop_session", store))
 
 	router.GET("/", func(c *gin.Context) {
-		c.FileFromFS("download.html", http.FS(staticSubFS))
+		c.FileFromFS("html/download.html", http.FS(staticSubFS))
 	})
 	router.GET("/download", func(c *gin.Context) {
-		c.FileFromFS("download.html", http.FS(staticSubFS))
+		c.FileFromFS("html/download.html", http.FS(staticSubFS))
 	})
 	router.GET("/login", func(c *gin.Context) {
-		c.FileFromFS("login.html", http.FS(staticSubFS))
+		c.FileFromFS("html/login.html", http.FS(staticSubFS))
 	})
 
 	router.GET("/rootfilesandfolders", handlers.GetRootFilesAndFoldersHandler)
+	router.GET("/folder/content/:id", handlers.GetFolderHandler)
 	router.GET("/allfiles", handlers.GetAllFilesHandler)
 
 	router.GET("/listOfFiles", func(c *gin.Context) {
@@ -141,13 +147,15 @@ func NewServer(authEnabled bool) (*gin.Engine, *mdns.Server) {
 func setupProtectedRoutes(group *gin.RouterGroup) {
 	staticSubFS, _ := fs.Sub(staticFS, "static")
 	group.GET("/dashboard", func(c *gin.Context) {
-		c.FileFromFS("dashboard.html", http.FS(staticSubFS))
+		c.FileFromFS("html/dashboard.html", http.FS(staticSubFS))
 	})
 
 	group.GET("/admin", func(c *gin.Context) {
-		c.FileFromFS("dashboard.html", http.FS(staticSubFS))
+		c.FileFromFS("html/dashboard.html", http.FS(staticSubFS))
 	})
 
 	group.POST("/upload", handlers.UploadFileHandler)
-	group.GET("/delete/:id", handlers.DeleteFileHandler)
+	group.DELETE("/delete/file/:id", handlers.DeleteFileHandler)
+	group.DELETE("/delete/folder/:id", handlers.DeleteFolderHandler)
+
 }
