@@ -1,4 +1,5 @@
-let currentFolderID = "00000000-0000-0000-0000-000000000000";
+let currentFolderID = "00000000-0000-0000-0000-000000000000"; // Root folder ID
+let folderHistory = []; // Stack to track folder navigation
 
 document.addEventListener('DOMContentLoaded', () => {
     loadFiles();
@@ -9,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Refresh button
-    document.getElementById('refreshBtn')?.addEventListener('click', loadFiles);
+    document.getElementById('refreshBtn')?.addEventListener('click', () => loadFiles(currentFolderID));
 
     // File Input Listeners
     const fileInput = document.getElementById('fileEl');
@@ -22,6 +23,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // Auto-fill name if single file
             if (e.target.files.length === 1 && fileNameInput) {
                 fileNameInput.value = e.target.files[0].name;
+            }
+            // Disable folder input when files are selected
+            if (e.target.files.length > 0 && folderInput) {
+                folderInput.disabled = true;
+                folderInput.closest('.file-input-wrapper')?.classList.add('disabled');
+            } else if (folderInput) {
+                folderInput.disabled = false;
+                folderInput.closest('.file-input-wrapper')?.classList.remove('disabled');
             }
         });
     }
@@ -37,6 +46,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (folderName) {
                     fileNameInput.value = folderName;
                 }
+            }
+            // Disable file input when folder is selected
+            if (e.target.files.length > 0 && fileInput) {
+                fileInput.disabled = true;
+                fileInput.closest('.file-input-wrapper')?.classList.add('disabled');
+            } else if (fileInput) {
+                fileInput.disabled = false;
+                fileInput.closest('.file-input-wrapper')?.classList.remove('disabled');
             }
         });
     }
@@ -60,21 +77,32 @@ function updateFileInputDisplay(input, type) {
     }
 }
 
-async function loadFiles() {
+async function loadFiles(folderId = null) {
     const table = document.getElementById('tableOfContent');
     const loading = document.getElementById('loading');
     const emptyState = document.getElementById('emptyState');
+
+    // If no folderId provided, use root
+    if (!folderId) {
+        folderId = "00000000-0000-0000-0000-000000000000";
+    }
+
+    // Update current folder ID
+    currentFolderID = folderId;
 
     if (loading) loading.style.display = 'block';
     if (table) table.innerHTML = '';
     if (emptyState) emptyState.style.display = 'none';
 
     try {
-        const response = await fetch('/listOfFiles');
+        // Determine which endpoint to use
+        const isRoot = folderId === "00000000-0000-0000-0000-000000000000";
+        const endpoint = isRoot ? '/rootfilesandfolders' : `/folder/content/${folderId}`;
+        
+        const response = await fetch(endpoint);
         if (!response.ok) throw new Error('Failed to fetch files');
 
         let data = await response.json();
-        console.log('Fetched data:', data);
         
         // Handle null response from empty DB
         if (!data) data = { files: [], folders: [] };
@@ -91,6 +119,10 @@ async function loadFiles() {
         const allItems = [...(data.folders || []), ...(data.files || [])];
 
         if (allItems.length === 0) {
+            // Show back button even if folder is empty (unless we're at root)
+            if (!isRoot) {
+                renderBackButton(table);
+            }
             if (emptyState) emptyState.style.display = 'block';
             return;
         }
@@ -111,20 +143,42 @@ async function loadFiles() {
         // Create Table Body
         const tbody = document.createElement('tbody');
         
-        // Render Folders
+        // Add back button if not at root
+        if (!isRoot && folderHistory.length > 0) {
+            const backRow = document.createElement('tr');
+            backRow.className = 'folder-row back-row';
+            backRow.innerHTML = `
+                <td colspan="5" style="cursor: pointer; font-weight: bold;">
+                    ⬅️ Back to parent folder
+                </td>
+            `;
+            backRow.onclick = () => navigateBack();
+            tbody.appendChild(backRow);
+        }
+        
+        // Render Folders (make them clickable)
         if (data.folders) {
             data.folders.forEach(folder => {
                 const row = document.createElement('tr');
+                row.className = 'folder-row';
+                row.style.cursor = 'pointer';
                 row.innerHTML = `
-                    <td>📁 ${folder.name}</td>
+                    <td class="folder-name">📁 ${folder.name}</td>
                     <td>-</td>
                     <td>Folder</td>
                     <td>${new Date(folder.created_at).toLocaleDateString()}</td>
                     <td>
-                        <a href="/download-folder/${folder.id}" class="btn-link">Download</a>
-                        <button onclick="deleteFolder('${folder.id}', '${folder.name}')" class="btn-link delete">Delete</button>
+                        <a href="/download-folder/${folder.id}" class="btn-link" onclick="event.stopPropagation()">Download</a>
+                        <button onclick="event.stopPropagation(); deleteFolder('${folder.id}', '${folder.name}')" class="btn-link delete">Delete</button>
                     </td>
                 `;
+                // Make the entire row clickable to open the folder
+                row.onclick = (e) => {
+                    // Only navigate if not clicking on action buttons
+                    if (!e.target.closest('.btn-link') && !e.target.closest('button')) {
+                        navigateToFolder(folder.id, folder.name);
+                    }
+                };
                 tbody.appendChild(row);
             });
         }
@@ -156,45 +210,107 @@ async function loadFiles() {
     }
 }
 
+function renderBackButton(table) {
+    const tbody = document.createElement('tbody');
+    const backRow = document.createElement('tr');
+    backRow.className = 'folder-row back-row';
+    backRow.style.cursor = 'pointer';
+    backRow.innerHTML = `
+        <td colspan="5" style="font-weight: bold;">
+            ⬅️ Back to parent folder
+        </td>
+    `;
+    backRow.onclick = () => navigateBack();
+    tbody.appendChild(backRow);
+    table.appendChild(tbody);
+}
 
+function navigateToFolder(folderId, folderName) {
+    // Add current folder to history before navigating
+    folderHistory.push({
+        id: currentFolderID,
+        name: folderName
+    });
+    
+    // Load the new folder
+    loadFiles(folderId);
+}
+
+function navigateBack() {
+    if (folderHistory.length > 0) {
+        // Pop the last folder from history
+        const previousFolder = folderHistory.pop();
+        
+        // Load the previous folder
+        loadFiles(previousFolder.id);
+    } else {
+        // If no history, go to root
+        loadFiles("00000000-0000-0000-0000-000000000000");
+    }
+}
+
+
+function analyzeFileInput(fileList){
+    const files = Array.from(fileList);
+
+    let hasRelativePath = files.some(file=> file.webkitRelativePath && file.webkitRelativePath.includes("/"));
+    let type;
+    if(files.length === 1 && !hasRelativePath ){
+        type ="file";
+    }else if(hasRelativePath){
+        type = "folder";
+    }else{
+        type = "folders";
+    }
+
+    const entries = files.map(file=>({
+        file,
+        size:file.size,
+        relativePath: file.webkitRelativePath || null
+    }));
+
+    const totalSize = entries.reduce((size, entry)=> size + entry.size, 0);
+
+    return{
+        type,
+        totalFiles : entries.length,
+        totalSize,
+        entries,
+    };
+}
 
 async function handleUpload(e) {
     e.preventDefault();
     
     const fileInput = document.getElementById('fileEl');
-    //const folderInput = document.getElementById('folderEl');
+    const folderInput = document.getElementById('folderEl');
     const pinInput = document.getElementById('pinCode');
     const submitBtn = document.getElementById('submitButton');
 
-    const formData = new FormData();
-    let hasFiles = false;
-    formData.append('folderId',currentFolderID) //important
-    // 1. Add standard files
-    if (fileInput.files.length > 0) {
-        for (const file of fileInput.files) {
-            formData.append('files', file);
-            // For regular files, path is just the /name
-            formData.append('paths', "/" + file.name);
-        }
-        hasFiles = true;
-    }
-
-    // 2. Add folder files
-    if (folderInput.files.length > 0) {
-        for (const file of folderInput.files) {
-            formData.append('files', file);
-            // webkitRelativePath contains "Folder/Sub/File.txt"
-            formData.append('paths', file.webkitRelativePath);
-        }
-        hasFiles = true;
-    }
-
-    if (!hasFiles) {
-        showToast('Please select at least one file or folder.', 'error');
+    // Determine which input has files
+    let filesToUpload = null;
+    if (fileInput.files && fileInput.files.length > 0) {
+        filesToUpload = fileInput.files;
+    } else if (folderInput.files && folderInput.files.length > 0) {
+        filesToUpload = folderInput.files;
+    } else {
+        showToast('Please select files or a folder to upload', 'error');
         return;
     }
 
-    formData.append('pinCode', pinInput.value);
+    const descriptor = analyzeFileInput(filesToUpload);
+
+    const formData = new FormData();
+    formData.append('folderId', currentFolderID);
+    formData.append('pinCode', pinInput.value || '');
+    formData.append('type', descriptor.type);
+
+    for (const entry of descriptor.entries) {
+        formData.append('files', entry.file);
+        if (entry.relativePath) {
+            formData.append('paths', entry.relativePath);
+        }
+    }
 
     // UI Loading State
     submitBtn.disabled = true;
@@ -226,10 +342,23 @@ async function handleUpload(e) {
 
         if (response.ok) {
             showToast('Upload successful!', 'success');
+            
+            // Clear inputs and re-enable both
             fileInput.value = '';
             folderInput.value = '';
             pinInput.value = '';
-            loadFiles(); // Refresh list
+            
+            // Re-enable both inputs
+            fileInput.disabled = false;
+            folderInput.disabled = false;
+            fileInput.closest('.file-input-wrapper')?.classList.remove('disabled');
+            folderInput.closest('.file-input-wrapper')?.classList.remove('disabled');
+            
+            // Reset input displays
+            updateFileInputDisplay(fileInput, 'file');
+            updateFileInputDisplay(folderInput, 'folder');
+            
+            loadFiles(currentFolderID); // Refresh current folder
         } else {
             const msg = await response.text();
             throw new Error(msg);
@@ -247,10 +376,10 @@ async function deleteFile(id, name) {
     if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
 
     try {
-        const response = await fetch(`/delete/${id}`, { method: 'DELETE' });
+        const response = await fetch(`/delete/file/${id}`, { method: 'DELETE' });
         if (response.ok) {
             showToast('File deleted', 'success');
-            loadFiles();
+            loadFiles(currentFolderID); // Reload current folder
         } else {
             throw new Error('Delete failed');
         }
@@ -261,8 +390,18 @@ async function deleteFile(id, name) {
 
 async function deleteFolder(id, name) {
     if (!confirm(`Are you sure you want to delete folder "${name}" and all its contents?`)) return;
-    // Note: You need to implement /deleteFolder/:id endpoint in backend
-    alert("Delete folder not implemented yet in backend");
+    
+    try{
+        const response = await fetch(`/delete/folder/${id}`, {method:'DELETE'});
+        if (response.ok) {
+            showToast('Folder deleted', 'success');
+            loadFiles(currentFolderID); // Reload current folder
+        } else {
+            throw new Error('Delete failed');
+        }
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
 }
 
 function formatBytes(bytes, decimals = 2) {

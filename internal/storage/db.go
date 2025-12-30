@@ -39,7 +39,6 @@ func Init(dbPath string) error {
 }
 
 func createTables() error {
-	const rootFolderID = "00000000-0000-0000-0000-000000000000"
 	query := `
     CREATE TABLE IF NOT EXISTS folders (
         id TEXT PRIMARY KEY,
@@ -59,6 +58,7 @@ func createTables() error {
         size INTEGER NOT NULL,
         extension TEXT,
         mimetype TEXT,
+        pin TEXT,
         mod_time DATETIME,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(folder_id) REFERENCES folders(id) ON DELETE CASCADE
@@ -68,7 +68,7 @@ func createTables() error {
 		return err
 	}
 	insertRootQuery := `INSERT INTO folders (id, name, pin_code) VALUES (?, 'Root', NULL) ON CONFLICT(id) DO NOTHING;`
-	_, err = DB.Exec(insertRootQuery, rootFolderID)
+	_, err = DB.Exec(insertRootQuery, RootFolderID)
 	if err != nil {
 		return err
 	}

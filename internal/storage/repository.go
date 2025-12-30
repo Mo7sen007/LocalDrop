@@ -7,6 +7,9 @@ import (
 	"github.com/google/uuid"
 )
 
+// RootFolderID is the UUID of the root folder
+const RootFolderID = "00000000-0000-0000-0000-000000000000"
+
 // --- Folder Operations ---
 
 func CreateFolder(folder *models.Folder) error {
@@ -18,6 +21,9 @@ func CreateFolder(folder *models.Folder) error {
 	var parentID interface{}
 	if folder.ParentID != nil {
 		parentID = folder.ParentID.String()
+	} else {
+		// If no parent specified, use root folder UUID
+		parentID = RootFolderID
 	}
 
 	_, err := DB.Exec(query, folder.ID.String(), folder.Name, folder.PinCode, folder.CreatedAt, folder.Size, parentID)
@@ -34,7 +40,9 @@ func GetFolderByNameAndParent(name string, parentID *uuid.UUID) (*models.Folder,
 	args = append(args, name)
 
 	if parentID == nil {
-		query += `parent_id IS NULL`
+		// If parentID is nil, look in the root folder
+		query += `parent_id = ?`
+		args = append(args, RootFolderID)
 	} else {
 		query += `parent_id = ?`
 		args = append(args, parentID.String())
@@ -80,7 +88,7 @@ func GetFolder(folderId uuid.UUID) (*models.Folder, error) {
 		folder.PinCode = &pinCode.String
 	}
 
-	folder.SubFolder, err = getSubFolders(folderId)
+	folder.SubFolder, err = GetSubFolders(folderId)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +107,7 @@ func DeleteFolder(folderId uuid.UUID) error {
 }
 
 // Helper to get subfolders
-func getSubFolders(parentID uuid.UUID) ([]models.Folder, error) {
+func GetSubFolders(parentID uuid.UUID) ([]models.Folder, error) {
 	rows, err := DB.Query(`SELECT id, name, pin_code, created_at, size FROM folders WHERE parent_id = ?`, parentID.String())
 	if err != nil {
 		return nil, err
@@ -124,7 +132,7 @@ func getSubFolders(parentID uuid.UUID) ([]models.Folder, error) {
 // Helper to get files in a folder
 func getFolderFiles(folderID uuid.UUID) ([]models.File, error) {
 	rows, err := DB.Query(`
-        SELECT id, folder_id, name, path, size, extension, mimetype, mod_time, created_at 
+        SELECT id, folder_id, name, path, size, extension, mimetype, pin, mod_time, created_at 
         FROM files WHERE folder_id = ?`, folderID.String())
 	if err != nil {
 		return nil, err
@@ -135,7 +143,8 @@ func getFolderFiles(folderID uuid.UUID) ([]models.File, error) {
 	for rows.Next() {
 		var file models.File
 		var folderIDStr sql.NullString
-		if err := rows.Scan(&file.ID, &folderIDStr, &file.Name, &file.Path, &file.Size, &file.Extension, &file.MIMEType, &file.ModTime, &file.CreatedAt); err != nil {
+		var pin sql.NullString
+		if err := rows.Scan(&file.ID, &folderIDStr, &file.Name, &file.Path, &file.Size, &file.Extension, &file.MIMEType, &pin, &file.ModTime, &file.CreatedAt); err != nil {
 			return nil, err
 		}
 		if folderIDStr.Valid {
@@ -151,12 +160,22 @@ func getFolderFiles(folderID uuid.UUID) ([]models.File, error) {
 
 func CreateFile(file *models.File) error {
 	query := `
-		INSERT INTO files (id, folder_id, name, path, size, extension, mimetype, mod_time, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO files (id, folder_id, name, path, size, extension, mimetype, pin, mod_time, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	var folderID interface{}
 	if file.FolderID != nil {
 		folderID = file.FolderID.String()
+	} else {
+		// If no folder specified, use root folder UUID
+		folderID = RootFolderID
+	}
+
+	var pin interface{}
+	if file.Pin != nil {
+		pin = *file.Pin
+	} else {
+		pin = nil
 	}
 
 	_, err := DB.Exec(query,
@@ -167,6 +186,7 @@ func CreateFile(file *models.File) error {
 		file.Size,
 		file.Extension,
 		file.MIMEType,
+		pin,
 		file.ModTime,
 		file.CreatedAt,
 	)
@@ -176,11 +196,12 @@ func CreateFile(file *models.File) error {
 func GetFile(fileId uuid.UUID) (*models.File, error) {
 	var file models.File
 	var folderIDStr sql.NullString
+	var pin sql.NullString
 
-	query := `SELECT id, folder_id, name, path, size, extension, mimetype, mod_time, created_at FROM files WHERE id = ?`
+	query := `SELECT id, folder_id, name, path, size, extension, mimetype, pin, mod_time, created_at FROM files WHERE id = ?`
 
 	err := DB.QueryRow(query, fileId.String()).Scan(
-		&file.ID, &folderIDStr, &file.Name, &file.Path, &file.Size, &file.Extension, &file.MIMEType, &file.ModTime, &file.CreatedAt,
+		&file.ID, &folderIDStr, &file.Name, &file.Path, &file.Size, &file.Extension, &file.MIMEType, &pin, &file.ModTime, &file.CreatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -189,6 +210,10 @@ func GetFile(fileId uuid.UUID) (*models.File, error) {
 	if folderIDStr.Valid {
 		parsedID := uuid.MustParse(folderIDStr.String)
 		file.FolderID = &parsedID
+	}
+
+	if pin.Valid {
+		file.Pin = &pin.String
 	}
 
 	return &file, nil
@@ -200,7 +225,7 @@ func DeleteFile(fileId uuid.UUID) error {
 }
 
 func GetAllFiles() ([]models.File, error) {
-	rows, err := DB.Query(`SELECT id, folder_id, name, path, size, extension, mimetype, mod_time, created_at FROM files`)
+	rows, err := DB.Query(`SELECT id, folder_id, name, path, size, extension, mimetype, pin, mod_time, created_at FROM files`)
 	if err != nil {
 		return nil, err
 	}
@@ -210,12 +235,16 @@ func GetAllFiles() ([]models.File, error) {
 	for rows.Next() {
 		var file models.File
 		var folderIDStr sql.NullString
-		if err := rows.Scan(&file.ID, &folderIDStr, &file.Name, &file.Path, &file.Size, &file.Extension, &file.MIMEType, &file.ModTime, &file.CreatedAt); err != nil {
+		var pin sql.NullString
+		if err := rows.Scan(&file.ID, &folderIDStr, &file.Name, &file.Path, &file.Size, &file.Extension, &file.MIMEType, &pin, &file.ModTime, &file.CreatedAt); err != nil {
 			return nil, err
 		}
 		if folderIDStr.Valid {
 			parsedID := uuid.MustParse(folderIDStr.String)
 			file.FolderID = &parsedID
+		}
+		if pin.Valid {
+			file.Pin = &pin.String
 		}
 		files = append(files, file)
 	}
@@ -225,7 +254,7 @@ func GetAllFiles() ([]models.File, error) {
 // --- Root Operations ---
 
 func GetRootFolders() ([]models.Folder, error) {
-	rows, err := DB.Query(`SELECT id, name, pin_code, created_at, size FROM folders WHERE parent_id IS NULL`)
+	rows, err := DB.Query(`SELECT id, name, pin_code, created_at, size FROM folders WHERE parent_id = ?`, RootFolderID)
 	if err != nil {
 		return nil, err
 	}
@@ -248,8 +277,8 @@ func GetRootFolders() ([]models.Folder, error) {
 
 func GetRootFiles() ([]models.File, error) {
 	rows, err := DB.Query(`
-        SELECT id, folder_id, name, path, size, extension, mimetype, mod_time, created_at 
-        FROM files WHERE folder_id IS NULL`)
+        SELECT id, folder_id, name, path, size, extension, mimetype, pin, mod_time, created_at 
+        FROM files WHERE folder_id = ?`, RootFolderID)
 	if err != nil {
 		return nil, err
 	}
@@ -259,12 +288,16 @@ func GetRootFiles() ([]models.File, error) {
 	for rows.Next() {
 		var file models.File
 		var folderIDStr sql.NullString
-		if err := rows.Scan(&file.ID, &folderIDStr, &file.Name, &file.Path, &file.Size, &file.Extension, &file.MIMEType, &file.ModTime, &file.CreatedAt); err != nil {
+		var pin sql.NullString
+		if err := rows.Scan(&file.ID, &folderIDStr, &file.Name, &file.Path, &file.Size, &file.Extension, &file.MIMEType, &pin, &file.ModTime, &file.CreatedAt); err != nil {
 			return nil, err
 		}
 		if folderIDStr.Valid {
 			parsedID := uuid.MustParse(folderIDStr.String)
 			file.FolderID = &parsedID
+		}
+		if pin.Valid {
+			file.Pin = &pin.String
 		}
 		files = append(files, file)
 	}
@@ -282,8 +315,11 @@ func GetRoot() (*models.Folder, error) {
 		return nil, err
 	}
 
+	// Parse root folder UUID
+	rootID := uuid.MustParse(RootFolderID)
+
 	return &models.Folder{
-		ID:        uuid.Nil, // Virtual ID for Root
+		ID:        rootID, // Root folder UUID
 		Name:      "Root",
 		SubFolder: subFolders,
 		Files:     files,

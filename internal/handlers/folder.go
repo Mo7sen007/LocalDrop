@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/Mo7sen007/LocalDrop/internal/models"
+	"github.com/Mo7sen007/LocalDrop/internal/services"
 	"github.com/Mo7sen007/LocalDrop/internal/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -87,6 +88,20 @@ func DownloadFolderHandler(c *gin.Context) {
 	}
 }
 
+func DeleteFolderHandler(c *gin.Context) {
+	folderIDStr := c.Param("id")
+	folderId, err := uuid.Parse(folderIDStr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Invalid UUID format")
+		return
+	}
+	err = services.DeleteFolder(folderId)
+	if err != nil {
+		c.String(http.StatusInternalServerError, fmt.Sprintf("error couldn't delete file:%v", err))
+	}
+	c.String(http.StatusOK, fmt.Sprintf("deleted folder:%s", folderIDStr))
+}
+
 func GetRootFilesAndFoldersHandler(c *gin.Context) {
 	rootFiles, err := storage.GetRootFiles()
 	if err != nil {
@@ -103,5 +118,23 @@ func GetRootFilesAndFoldersHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"files":   rootFiles,
 		"folders": rootFolders,
+	})
+}
+
+func GetFolderHandler(c *gin.Context) {
+	folderIDStr := c.Param("id")
+	folderId, err := uuid.Parse(folderIDStr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Invalid UUID format")
+		return
+	}
+	files, subFolders, err := services.GetFolderContentByID(folderId)
+	if err != nil {
+		c.String(http.StatusInternalServerError, fmt.Sprintf("error loading files and sub folders:%v", err))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"files":   files,
+		"folders": subFolders,
 	})
 }

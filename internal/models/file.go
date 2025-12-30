@@ -13,7 +13,7 @@ type File struct {
 	Name      string     `json:"name"`
 	Path      string     `json:"path"`
 	Size      int64      `json:"size"`
-	Pin       string     `json:"pin"`
+	Pin       *string    `json:"pin,omitempty"`
 	Extension string     `json:"extension"`
 	MIMEType  string     `json:"mime_type"`
 	ModTime   time.Time  `json:"mod_time"`

@@ -7,8 +7,9 @@ import (
 )
 
 type Folder struct {
-	ID        uuid.UUID  `json:"id" form:"id"`
-	Name      string     `json:"name" form:"name"`
+	ID        uuid.UUID `json:"id" form:"id"`
+	Name      string    `json:"name" form:"name"`
+	Path      string
 	PinCode   *string    `json:"pin_code,omitempty" form:"pin_code"`
 	CreatedAt time.Time  `json:"created_at" form:"created_at"`
 	Size      int64      `json:"size" form:"size"`

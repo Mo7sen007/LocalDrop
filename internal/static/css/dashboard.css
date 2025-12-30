@@ -272,6 +272,17 @@ input[type="file"] {
     border-style: solid;
 }
 
+.file-input-wrapper.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.file-input-wrapper.disabled .file-input-display {
+    background: #e9ecef;
+    border-color: #ced4da;
+    cursor: not-allowed;
+}
+
 .file-icon {
     font-size: 1.2rem;
     color: #6c757d;
