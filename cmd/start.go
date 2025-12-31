@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var port string      //default :8080
+var port int         //default :8080
 var debug bool       //default false
 var authEnabled bool // default false
 
@@ -41,8 +41,8 @@ var serveCmd = &cobra.Command{
 			return
 		}
 
-		if isPortInUse(port) {
-			fmt.Printf("Port %s is already in use by another application.\n", port)
+		if isPortInUse(strconv.Itoa(port)) {
+			fmt.Printf("Port %d is already in use by another application.\n", port)
 			fmt.Println("Choose a different port with --port flag")
 			return
 		}
@@ -53,7 +53,7 @@ var serveCmd = &cobra.Command{
 			return
 		}
 
-		args = []string{"start", "--debug", "--port", port}
+		args = []string{"start", "--debug", "--port", strconv.Itoa(port)}
 		if authEnabled {
 			args = append(args, "--auth")
 		}
@@ -81,14 +81,14 @@ var serveCmd = &cobra.Command{
 		}
 
 		fmt.Printf("LocalDrop server started in background with PID %d\n", pid)
-		fmt.Printf("Server running on http://localhost:%s\n", port)
+		fmt.Printf("Server running on http://localhost:%d\n", port)
 		fmt.Println("Use 'localdrop stop' to stop the server")
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
-	serveCmd.Flags().StringVarP(&port, "port", "p", "8080", "Port to run the server on")
+	serveCmd.Flags().IntVarP(&port, "port", "p", 8080, "Port to run the server on")
 	serveCmd.Flags().BoolVarP(&debug, "debug", "d", false, "Run in debug mode (foreground with console output)")
 	serveCmd.Flags().BoolVarP(&authEnabled, "auth", "a", false, "Enable admin authentication")
 }
@@ -136,7 +136,7 @@ func startServer() {
 
 	if debug {
 		fmt.Println("Storage initialized successfully")
-		fmt.Printf("Starting server on port %s...\n", port)
+		fmt.Printf("Starting server on port %d...\n", port)
 		if authEnabled {
 			fmt.Println("Admin authentication: ENABLED")
 		} else {
@@ -147,16 +147,25 @@ func startServer() {
 	serverlog.InitLogToFile()
 	defer serverlog.LogFile.Close()
 
-	router, mdnsServer := internal.NewServer(authEnabled)
-	mdnsServer.Shutdown()
+	server := internal.NewServer(authEnabled, port)
+	if err := server.Init(); err != nil {
+		fmt.Printf("Failed to initialize server: %v\n", err)
+		return
+	}
+
+	//router, mdnsServer := internal.NewServer(authEnabled)
+	//mdnsServer.Shutdown()
 
 	if debug {
-		fmt.Printf("Server ready at http://localhost:%s\n", port)
+		fmt.Printf("Server ready at http://localhost:%d\n", port)
 		fmt.Println("Press Ctrl+C to stop")
 	}
 
-	err := router.Run(":" + port)
-	if err != nil {
+	if err := server.Start(); err != nil {
 		fmt.Printf("Server failed to start: %v\n", err)
 	}
+	//err := server.router.Run(":" + port)
+	//if err != nil {
+	//fmt.Printf("Server failed to start: %v\n", err)
+	//}
 }
