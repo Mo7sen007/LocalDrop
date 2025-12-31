@@ -7,6 +7,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/Mo7sen007/LocalDrop/internal/paths"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -43,6 +44,7 @@ func createTables() error {
     CREATE TABLE IF NOT EXISTS folders (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
+		path TEXT NOT NULL UNIQUE,
         pin_code TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         size INTEGER DEFAULT 0,
@@ -67,8 +69,13 @@ func createTables() error {
 	if err != nil {
 		return err
 	}
-	insertRootQuery := `INSERT INTO folders (id, name, pin_code) VALUES (?, 'Root', NULL) ON CONFLICT(id) DO NOTHING;`
-	_, err = DB.Exec(insertRootQuery, RootFolderID)
+	rootPath, err := paths.GetFilesPath()
+	rootPath += "Root"
+	if err != nil {
+		return err
+	}
+	insertRootQuery := `INSERT INTO folders (id, name, pin_code, path) VALUES (?, 'Root', NULL,?) ON CONFLICT(id) DO NOTHING;`
+	_, err = DB.Exec(insertRootQuery, RootFolderID, rootPath)
 	if err != nil {
 		return err
 	}

@@ -27,7 +27,7 @@ var staticFS embed.FS
 type Server struct {
 	router      *gin.Engine
 	dns         *mdns.Server
-	root        models.Folder
+	root        *models.Folder
 	authEnabled bool
 	port        int
 }
@@ -201,6 +201,8 @@ func (s *Server) Init() error {
 	if err := s.setupMDNS(); err != nil {
 		return fmt.Errorf("failed to setup mDNS: %w", err)
 	}
+
+	s.root, _ = storage.GetRoot()
 
 	return nil
 }
