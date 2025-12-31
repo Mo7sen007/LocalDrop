@@ -73,7 +73,7 @@ var serveCmd = &cobra.Command{
 
 		pid := bgCmd.Process.Pid
 
-		pidInfo := fmt.Sprintf("%d:%s", pid, port)
+		pidInfo := fmt.Sprintf("%d:%d", pid, port)
 		err = os.WriteFile(pidFile, []byte(pidInfo), 0644)
 		if err != nil {
 			fmt.Println("Failed to write PID file:", err)
