@@ -5,9 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 
-	"github.com/Mo7sen007/LocalDrop/internal/paths"
 	"github.com/Mo7sen007/LocalDrop/internal/services"
 	"github.com/Mo7sen007/LocalDrop/internal/storage"
 
@@ -48,121 +46,6 @@ func DownloadFileHandler(c *gin.Context) {
 	// PIN is correct or file is not protected - allow download
 	log.Printf("Sent %s with size of %d", file.Name, file.Size)
 	c.FileAttachment(file.Path, file.Name)
-}
-
-func UploadFileHandler(c *gin.Context) {
-	// Parse multipart form (max 32MB memory)
-	form, err := c.MultipartForm()
-	if err != nil {
-		log.Printf("File upload error: %v", err)
-		c.String(http.StatusBadRequest, "File upload error: %v", err)
-		return
-	}
-
-	// Extract form data
-	files := form.File["files"]           // Array of uploaded files
-	pinCode := c.PostForm("pinCode")      // Optional PIN code for protection
-	folderIdStr := c.PostForm("folderId") // Parent folder ID (can be root UUID)
-	contentType := c.PostForm("type")     // Upload type: "file", "files", or "folder"
-
-	// Parse folder ID if provided (including root folder UUID)
-	var folderID *uuid.UUID
-	if folderIdStr != "" {
-		parsedID, err := uuid.Parse(folderIdStr)
-		if err != nil {
-			c.String(http.StatusBadRequest, "Invalid folder ID: %v", err)
-			return
-		}
-		folderID = &parsedID
-	}
-
-	var basePath string
-
-	basePath, err = paths.GetFilesPath()
-	if err != nil {
-		log.Printf("Could not get deafault path error:%v", err)
-
-	}
-
-	// Route to appropriate handler based on content type
-	switch contentType {
-	case "file":
-		// Single file upload
-		if len(files) == 0 {
-			c.String(http.StatusBadRequest, "No file provided")
-			return
-		}
-
-		folder, err := storage.GetFolder(*folderID)
-
-		if err != nil {
-			// Log error if folder is not found
-			log.Printf("Folder with ID %s not found: %v", folderID.String(), err)
-
-			if basePath != "" {
-				c.String(http.StatusInternalServerError, "Could not get deafault path")
-				return
-			}
-		}
-
-		basePath = folder.Path
-
-		uniqueName := files[0].Filename + uuid.New().String() + filepath.Ext(files[0].Filename)
-
-		diskPath := filepath.Join(basePath, uniqueName)
-
-		if err := c.SaveUploadedFile(files[0], diskPath); err != nil {
-			log.Printf("Failed to save file %s to disk: %v", files[0].Filename, err)
-			c.String(http.StatusInternalServerError, "could not save file to disk")
-			return
-		}
-
-		if err := services.SaveFile(files[0].Filename, diskPath, pinCode, &folder.ID); err != nil {
-			c.String(http.StatusInternalServerError, "Failed to upload file: %v", err)
-			return
-
-		}
-
-		c.String(http.StatusOK, "File uploaded successfully!")
-
-	case "files":
-		// Multiple files upload - save multiple files without folder structure
-		if len(files) == 0 {
-			c.String(http.StatusBadRequest, "No files provided")
-			return
-		}
-
-		// Save each file individually to the same folder
-		for _, fileHeader := range files {
-			if err := services.SaveFile(fileHeader.Filename, basePath, pinCode, folderID); err != nil {
-				log.Printf("Failed to upload file %s: %v", fileHeader.Filename, err)
-				// Continue with other files even if one fails
-			}
-		}
-
-		c.String(http.StatusOK, fmt.Sprintf("%d files uploaded successfully!", len(files)))
-
-	case "folder":
-		// Folder upload with nested structure
-		if len(files) == 0 {
-			c.String(http.StatusBadRequest, "No files provided")
-			return
-		}
-
-		// Get the paths array from the form
-		pathsList := form.Value["paths"]
-
-		// Save the folder structure using SaveFolder function
-		if err := services.SaveFolder(c, files, pathsList, folderID, pinCode); err != nil {
-			c.String(http.StatusInternalServerError, "Failed to upload folder: %v", err)
-			return
-		}
-
-		c.String(http.StatusOK, fmt.Sprintf("Folder uploaded successfully with %d files!", len(files)))
-
-	default:
-		c.String(http.StatusBadRequest, "Invalid upload type: %s", contentType)
-	}
 }
 
 func DeleteFileHandler(c *gin.Context) {

@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 
 	"github.com/Mo7sen007/LocalDrop/internal/models"
-	"github.com/Mo7sen007/LocalDrop/internal/paths"
 	"github.com/Mo7sen007/LocalDrop/internal/services"
 	"github.com/Mo7sen007/LocalDrop/internal/storage"
 	"github.com/gin-gonic/gin"
@@ -138,39 +137,4 @@ func GetFolderHandler(c *gin.Context) {
 		"files":   files,
 		"folders": subFolders,
 	})
-}
-
-func UploadFolder(c *gin.Context) {
-	form, err := c.MultipartForm()
-	if err != nil {
-		log.Printf("File upload error: %v", err)
-		c.String(http.StatusBadRequest, "File upload error: %v", err)
-		return
-	}
-
-	// Extract form data
-	files := form.File["files"]           // Array of uploaded files
-	pinCode := c.PostForm("pinCode")      // Optional PIN code for protection
-	folderIdStr := c.PostForm("folderId") // Parent folder ID (can be root UUID)
-	contentType := c.PostForm("type")     // Upload type: "file", "files", or "folder"
-
-	// Parse folder ID if provided (including root folder UUID)
-	var folderID *uuid.UUID
-	if folderIdStr != "" {
-		parsedID, err := uuid.Parse(folderIdStr)
-		if err != nil {
-			c.String(http.StatusBadRequest, "Invalid folder ID: %v", err)
-			return
-		}
-		folderID = &parsedID
-	}
-
-	var basePath string
-
-	basePath, err = paths.GetFilesPath()
-	if err != nil {
-		log.Printf("Could not get deafault path error:%v", err)
-
-	}
-	if contentType == "folder":
 }
