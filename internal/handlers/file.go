@@ -5,7 +5,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
+	"github.com/Mo7sen007/LocalDrop/internal/paths"
 	"github.com/Mo7sen007/LocalDrop/internal/services"
 	"github.com/Mo7sen007/LocalDrop/internal/storage"
 
@@ -74,6 +76,14 @@ func UploadFileHandler(c *gin.Context) {
 		folderID = &parsedID
 	}
 
+	var basePath string
+
+	basePath, err = paths.GetFilesPath()
+	if err != nil {
+		log.Printf("Could not get deafault path error:%v", err)
+
+	}
+
 	// Route to appropriate handler based on content type
 	switch contentType {
 	case "file":
@@ -83,10 +93,34 @@ func UploadFileHandler(c *gin.Context) {
 			return
 		}
 
-		// Save the single file using the new SaveFile function
-		if err := services.SaveFile(c, files[0], folderID, pinCode); err != nil {
+		folder, err := storage.GetFolder(*folderID)
+
+		if err != nil {
+			// Log error if folder is not found
+			log.Printf("Folder with ID %s not found: %v", folderID.String(), err)
+
+			if basePath != "" {
+				c.String(http.StatusInternalServerError, "Could not get deafault path")
+				return
+			}
+		}
+
+		basePath = folder.Path
+
+		uniqueName := files[0].Filename + uuid.New().String() + filepath.Ext(files[0].Filename)
+
+		diskPath := filepath.Join(basePath, uniqueName)
+
+		if err := c.SaveUploadedFile(files[0], diskPath); err != nil {
+			log.Printf("Failed to save file %s to disk: %v", files[0].Filename, err)
+			c.String(http.StatusInternalServerError, "could not save file to disk")
+			return
+		}
+
+		if err := services.SaveFile(files[0].Filename, diskPath, pinCode, &folder.ID); err != nil {
 			c.String(http.StatusInternalServerError, "Failed to upload file: %v", err)
 			return
+
 		}
 
 		c.String(http.StatusOK, "File uploaded successfully!")
@@ -100,7 +134,7 @@ func UploadFileHandler(c *gin.Context) {
 
 		// Save each file individually to the same folder
 		for _, fileHeader := range files {
-			if err := services.SaveFile(c, fileHeader, folderID, pinCode); err != nil {
+			if err := services.SaveFile(fileHeader.Filename, basePath, pinCode, folderID); err != nil {
 				log.Printf("Failed to upload file %s: %v", fileHeader.Filename, err)
 				// Continue with other files even if one fails
 			}

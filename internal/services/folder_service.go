@@ -138,7 +138,7 @@ func SaveFolder(c *gin.Context, files []*multipart.FileHeader, pathsList []strin
 
 		// Now save the file using the SaveFile function
 		// The file will be saved under the currentParentID (which is the deepest folder in the path)
-		if err := SaveFile(c, fileHeader, currentParentID, pinCode); err != nil {
+		if err := SaveFile(fileHeader.Filename, basePath, pinCode, currentParentID); err != nil {
 			log.Printf("Failed to save file %s: %v", fileHeader.Filename, err)
 			// Continue with other files even if one fails
 			continue

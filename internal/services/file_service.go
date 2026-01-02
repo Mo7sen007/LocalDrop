@@ -65,7 +65,7 @@ func DeleteFiles(files []models.File) error {
 // - folderID: UUID of the parent folder (can be root folder UUID or another folder)
 // - pinCode: Optional PIN code for file protection
 // Returns error if folder lookup, file save, or database insert fails
-func SaveFile(c *gin.Context, fileHeader *multipart.FileHeader, folderID *uuid.UUID, pinCode string) error {
+func oldSaveFile(c *gin.Context, fileHeader *multipart.FileHeader, folderID *uuid.UUID, pinCode string) error {
 	var basePath string
 
 	// Verify that the folder exists if a folderID is provided
@@ -91,7 +91,7 @@ func SaveFile(c *gin.Context, fileHeader *multipart.FileHeader, folderID *uuid.U
 
 	// Generate a unique filename to avoid collisions on disk
 	// Format: <uuid>.<original-extension>
-	uniqueName := uuid.New().String() + filepath.Ext(fileHeader.Filename)
+	uniqueName := fileHeader.Filename + uuid.New().String() + filepath.Ext(fileHeader.Filename)
 
 	// Build the full disk path where the file will be saved
 	diskPath := filepath.Join(basePath, uniqueName)
@@ -147,4 +147,45 @@ func SaveFile(c *gin.Context, fileHeader *multipart.FileHeader, folderID *uuid.U
 		fileHeader.Filename, uploadedFile.ID.String(), uploadedFile.Size)
 
 	return nil
+}
+
+func SaveFile(filename string, diskPath string, pinCode string, folderID *uuid.UUID) error {
+
+	info, err := os.Stat(diskPath)
+	if err != nil {
+		// If we can't stat the file, clean up and return error
+		os.Remove(diskPath)
+		return fmt.Errorf("could not stat saved file: %w", err)
+	}
+	extension := filepath.Ext(filename)
+	var pinPtr *string
+	if pinCode != "" {
+		pinPtr = &pinCode
+	}
+
+	uploadedFile := models.File{
+		ID:        uuid.New(),                      // Generate new UUID for this file
+		FolderID:  folderID,                        // Parent folder (nil if root level)
+		Name:      filename,                        // Original filename from upload
+		Path:      diskPath,                        // Physical path on disk
+		Pin:       pinPtr,                          // PIN code for access control (nil if none)
+		Size:      info.Size(),                     // File size in bytes
+		Extension: extension,                       // File extension (e.g., ".txt")
+		MIMEType:  mime.TypeByExtension(extension), // MIME type derived from extension
+		ModTime:   time.Now(),                      // Last modification time
+		CreatedAt: time.Now(),                      // Creation timestamp
+	}
+	if err := storage.CreateFile(&uploadedFile); err != nil {
+		// If database insert fails, clean up the physical file
+		os.Remove(diskPath)
+		log.Printf("Failed to save file metadata to database: %v", err)
+		return fmt.Errorf("could not save file to database: %w", err)
+	}
+
+	// Log successful upload
+	log.Printf("Successfully uploaded file: %s (ID: %s, Size: %d bytes)",
+		filename, uploadedFile.ID.String(), uploadedFile.Size)
+
+	return nil
+
 }
