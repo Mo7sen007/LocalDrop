@@ -134,7 +134,7 @@ func setupProtectedRoutes(group *gin.RouterGroup) {
 		c.FileFromFS("html/dashboard.html", http.FS(staticSubFS))
 	})
 
-	group.POST("/upload", handlers.UploadFileHandler)
+	group.POST("/upload", handlers.UploadHandler)
 	group.DELETE("/delete/file/:id", handlers.DeleteFileHandler)
 	group.DELETE("/delete/folder/:id", handlers.DeleteFolderHandler)
 
