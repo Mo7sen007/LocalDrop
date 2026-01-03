@@ -24,6 +24,7 @@ func DeleteFolder(folderID uuid.UUID) error {
 	if err != nil {
 		return err
 	}
+	storage.DeleteFolder(folderID)
 	return nil
 
 }
