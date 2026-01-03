@@ -12,7 +12,6 @@ import (
 	"github.com/Mo7sen007/LocalDrop/internal/models"
 	"github.com/Mo7sen007/LocalDrop/internal/paths"
 	"github.com/Mo7sen007/LocalDrop/internal/storage"
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
@@ -47,7 +46,7 @@ func GetFolderContentByID(folderID uuid.UUID) ([]models.File, []models.Folder, e
 // - parentFolderID: UUID of the parent folder where this structure will be created
 // - pinCode: Optional PIN code for file protection
 // Returns error if folder creation, file save, or database operations fail
-func SaveFolder(c *gin.Context, files []*multipart.FileHeader, pathsList []string, parentFolderID *uuid.UUID, pinCode string) error {
+func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderID *uuid.UUID, pinCode string) error {
 	// Determine the base path for saving files
 	var basePath string
 
@@ -76,6 +75,7 @@ func SaveFolder(c *gin.Context, files []*multipart.FileHeader, pathsList []strin
 	for i, fileHeader := range files {
 		// Determine the relative path for this file
 		relPath := fileHeader.Filename
+
 		if i < len(pathsList) && pathsList[i] != "" {
 			relPath = pathsList[i]
 		}
@@ -138,7 +138,12 @@ func SaveFolder(c *gin.Context, files []*multipart.FileHeader, pathsList []strin
 
 		// Now save the file using the SaveFile function
 		// The file will be saved under the currentParentID (which is the deepest folder in the path)
-		if err := SaveFile(fileHeader.Filename, basePath, pinCode, currentParentID); err != nil {
+		finalPath := filepath.Join(basePath, relPath)
+		err := SaveUploadedFile(fileHeader, finalPath)
+		if err != nil {
+			return err
+		}
+		if err := SaveFile(fileHeader.Filename, finalPath, pinCode, currentParentID); err != nil {
 			log.Printf("Failed to save file %s: %v", fileHeader.Filename, err)
 			// Continue with other files even if one fails
 			continue
