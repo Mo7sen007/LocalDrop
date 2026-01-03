@@ -14,8 +14,8 @@ const RootFolderID = "00000000-0000-0000-0000-000000000000"
 
 func CreateFolder(folder *models.Folder) error {
 	query := `
-        INSERT INTO folders (id, name, pin_code, created_at, size, parent_id)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO folders (id, name,path , pin_code, created_at, size, parent_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     `
 
 	var parentID interface{}
@@ -26,7 +26,7 @@ func CreateFolder(folder *models.Folder) error {
 		parentID = RootFolderID
 	}
 
-	_, err := DB.Exec(query, folder.ID.String(), folder.Name, folder.PinCode, folder.CreatedAt, folder.Size, parentID)
+	_, err := DB.Exec(query, folder.ID.String(), folder.Name, folder.Path, folder.PinCode, folder.CreatedAt, folder.Size, parentID)
 	return err
 }
 
