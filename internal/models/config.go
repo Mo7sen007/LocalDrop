@@ -1,6 +1,8 @@
 package models
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Config struct {
 	App     AppConfig     `yaml:"server"`

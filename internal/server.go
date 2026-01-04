@@ -43,10 +43,15 @@ func NewServer(port int, authEnabled bool, loggingLevel string) *Server {
 
 	err = serverConfig.Validate()
 	if err != nil {
-		log.Printf("%v", err)
+		log.Printf("Invalid parameters:%v", err)
 		return nil
 	}
 	server.config = &serverConfig
+	err = config.SaveConfig(&serverConfig)
+	if err != nil {
+		log.Printf("Couldn't save config to disk:%v", err)
+		return nil
+	}
 	return &server
 }
 
