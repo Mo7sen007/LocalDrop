@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/Mo7sen007/LocalDrop/internal/config"
 	"github.com/Mo7sen007/LocalDrop/internal/handlers"
 	"github.com/Mo7sen007/LocalDrop/internal/middleware"
 	"github.com/Mo7sen007/LocalDrop/internal/models"
@@ -25,18 +26,28 @@ import (
 var staticFS embed.FS
 
 type Server struct {
-	router      *gin.Engine
-	dns         *mdns.Server
-	root        *models.Folder
-	authEnabled bool
-	port        int
+	router *gin.Engine
+	dns    *mdns.Server
+	root   *models.Folder
+	config *models.Config
 }
 
-func NewServer(authEnabled bool, port int) *Server {
-	return &Server{
-		authEnabled: authEnabled,
-		port:        port,
+func NewServer(port int, authEnabled bool, loggingLevel string) *Server {
+	var server Server
+	serverConfig, err := config.GetConfig()
+	if err != nil {
+		log.Fatal("Faild to get server config")
+		return nil
 	}
+	serverConfig.ApplyOverrides(port, &authEnabled, loggingLevel)
+
+	err = serverConfig.Validate()
+	if err != nil {
+		log.Printf("%v", err)
+		return nil
+	}
+	server.config = &serverConfig
+	return &server
 }
 
 //helper functions for setupRouter()
@@ -114,7 +125,7 @@ func (s *Server) setupRouter() error {
 	s.router.GET("/download-folder/:id", handlers.DownloadFolderHandler)
 	s.router.GET("/hasPin/:id", handlers.HasPinHandler)
 
-	if s.authEnabled {
+	if s.config.Auth.Enabled {
 		authGroup := s.router.Group("/", middleware.AuthMiddleware())
 		setupProtectedRoutes(authGroup)
 	} else {
@@ -166,7 +177,7 @@ func (s *Server) setupMDNS() error {
 		"_http._tcp",       // advertise as an HTTP service
 		"",                 // domain (empty for .local)
 		"localdrop.local.", // hostname to advertise
-		s.port,             // port from server config
+		s.config.App.Port,  // port from app config
 		[]net.IP{localIP},  // auto-detected IP
 		[]string{"path=/"}, // TXT records
 	)
@@ -179,7 +190,7 @@ func (s *Server) setupMDNS() error {
 		return fmt.Errorf("failed to start mDNS server: %w", err)
 	}
 
-	log.Printf("mDNS server started: %s:%d (IP: %s)", "localdrop.local.", s.port, localIP)
+	log.Printf("mDNS server started: %s:%d (IP: %s)", "localdrop.local.", s.config.App.Port, localIP)
 	return nil
 }
 
@@ -208,7 +219,7 @@ func (s *Server) Init() error {
 }
 
 func (s *Server) Start() error {
-	err := s.router.Run(fmt.Sprintf(":%d", s.port))
+	err := s.router.Run(fmt.Sprintf(":%d", s.config.App.Port))
 	if err != nil {
 		fmt.Printf("Server failed to start: %v\n", err)
 	}

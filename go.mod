@@ -38,6 +38,7 @@ require (
 	github.com/spf13/pflag v1.0.7 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.12 // indirect
+	go.yaml.in/yaml/v4 v4.0.0-rc.3 // indirect
 	golang.org/x/arch v0.16.0 // indirect
 	golang.org/x/mod v0.25.0 // indirect
 	golang.org/x/net v0.40.0 // indirect

@@ -147,7 +147,7 @@ func startServer() {
 	serverlog.InitLogToFile()
 	defer serverlog.LogFile.Close()
 
-	server := internal.NewServer(authEnabled, port)
+	server := internal.NewServer(port, authEnabled, "full")
 	if err := server.Init(); err != nil {
 		fmt.Printf("Failed to initialize server: %v\n", err)
 		return
