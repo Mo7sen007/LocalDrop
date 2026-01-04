@@ -36,6 +36,12 @@ func Initialize() error {
 
 	return initErr
 }
+func GetConfigPath() (string, error) {
+	if err := Initialize(); err != nil {
+		return "", err
+	}
+	return filepath.Join(baseDir, "config.yaml"), nil
+}
 
 func GetExePath() (string, error) {
 	exePath, err := os.Executable()
@@ -43,13 +49,6 @@ func GetExePath() (string, error) {
 		return "", fmt.Errorf("could not get executable path: %v", err)
 	}
 	return filepath.Dir(exePath), nil
-}
-
-func GetJsonFilePath() (string, error) {
-	if err := Initialize(); err != nil {
-		return "", err
-	}
-	return filepath.Join(baseDir, "listOfFiles.json"), nil
 }
 
 func GetAdminFilePath() (string, error) {
