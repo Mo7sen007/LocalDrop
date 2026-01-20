@@ -8,7 +8,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
 
 	"github.com/Mo7sen007/LocalDrop/internal/config"
 	"github.com/Mo7sen007/LocalDrop/internal/handlers"
@@ -67,29 +66,63 @@ func generateSecretKey() []byte {
 }
 
 func getSecretKey() []byte {
-	if key := os.Getenv("SESSION_SECRET"); key != "" {
+	if key, ok := config.GetString("SESSION_SECRET"); ok {
 		return []byte(key)
 	}
 
-	return generateSecretKey()
+	if config.IsProduction() {
+		log.Fatal("SESSION_SECRET is required in production (set SESSION_SECRET, or LOCALDROP_ENV=prod/production)")
+		return nil
+	}
+
+	// Avoid per-start random secrets unless explicitly requested (they invalidate sessions on restart).
+	if config.GetBoolDefault("SESSION_SECRET_RANDOM", false) {
+		log.Printf("warning: SESSION_SECRET_RANDOM=true; using a random per-start session secret")
+		return generateSecretKey()
+	}
+
+	log.Printf("warning: SESSION_SECRET not set; using an insecure default dev session secret")
+	return []byte("localdrop-dev-session-secret-change-me")
+}
+
+func getSessionCookieSecureDefault() bool {
+
+	return config.IsProduction()
+}
+
+func getSessionCookieSecure() bool {
+	return config.GetBoolDefault("SESSION_COOKIE_SECURE", getSessionCookieSecureDefault())
+}
+
+func getGinMod() string {
+	if mode, ok := config.GetString("GIN_MODE"); ok {
+		return mode
+	}
+	if config.IsProduction() {
+		return gin.ReleaseMode
+	}
+	return gin.DebugMode
 }
 
 func (s *Server) setupRouter() error {
-	gin.SetMode(gin.ReleaseMode)
+
+	gin.SetMode(getGinMod())
+
 	s.router = gin.Default()
+
 	staticSubFS, err := fs.Sub(staticFS, "static")
 	if err != nil {
 		log.Fatal("Failed to create static sub-filesystem:", err)
 	}
 	s.router.StaticFS("/static", http.FS(staticSubFS))
-	s.router.MaxMultipartMemory = 8 << 20
+	s.router.MaxMultipartMemory = s.config.Storage.MaxFileSize
 
 	store := cookie.NewStore(getSecretKey())
 	store.Options(sessions.Options{
 		Path:     "/",
 		MaxAge:   86400 * 7,
 		HttpOnly: true,
-		Secure:   false,
+		Secure:   getSessionCookieSecure(),
 		SameSite: http.SameSiteLaxMode,
 	})
 	s.router.Use(sessions.Sessions("localdrop_session", store))
@@ -115,12 +148,6 @@ func (s *Server) setupRouter() error {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		// Return the contents of the root folder (files and subfolders)
-		// The frontend likely expects a list of items, or a folder object.
-		// If the previous implementation returned a map/list of files, we might need to adjust.
-		// But since we are moving to a folder structure, returning the root folder object is best.
-		// However, dashboard.js expects a list of files.
-		// Let's check dashboard.js again.
 		c.JSON(http.StatusOK, rootFolder)
 	})
 
@@ -157,7 +184,7 @@ func setupProtectedRoutes(group *gin.RouterGroup) {
 }
 
 func (s *Server) setupMDNS() error {
-	// Get local IP address automatically
+
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
 		return fmt.Errorf("failed to get network interfaces: %w", err)
