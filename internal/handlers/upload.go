@@ -21,13 +21,21 @@ func parseUploadForm(c *gin.Context) (files []*multipart.FileHeader, pinCode str
 	}
 	files = form.File["files"]
 	pinCode = c.PostForm("pinCode")
+
 	folderIdStr := c.PostForm("folderId")
 	contentType = c.PostForm("type")
 
+	if pinCode != "" {
+		pinCode, err = services.HashPassword(pinCode)
+		if err != nil {
+			return nil, "", nil, "", "", fmt.Errorf("error parsing pin code: %w", err)
+		}
+	}
+
 	if folderIdStr != "" {
-		parsed, perr := uuid.Parse(folderIdStr)
-		if perr != nil {
-			return nil, "", nil, "", "", fmt.Errorf("invalid folder id: %w", perr)
+		parsed, err := uuid.Parse(folderIdStr)
+		if err != nil {
+			return nil, "", nil, "", "", fmt.Errorf("invalid folder id: %w", err)
 		}
 		folderID = &parsed
 	}

@@ -37,7 +37,10 @@ func DownloadFileHandler(c *gin.Context) {
 			c.String(http.StatusUnauthorized, "PIN code required")
 			return
 		}
-		if pinCode != *file.Pin {
+
+		verified := services.CheckPasswordHash(pinCode, *file.Pin)
+
+		if verified {
 			c.String(http.StatusUnauthorized, "Incorrect PIN code")
 			return
 		}
