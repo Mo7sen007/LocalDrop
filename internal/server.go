@@ -31,14 +31,22 @@ type Server struct {
 	config *models.Config
 }
 
-func NewServer(port int, authEnabled bool, loggingLevel string) *Server {
+func NewServer(port *int, authEnabled *bool, loggingLevel *string) *Server {
 	var server Server
 	serverConfig, err := config.GetConfig()
 	if err != nil {
 		log.Fatal("Faild to get server config")
 		return nil
 	}
-	serverConfig.ApplyOverrides(port, &authEnabled, loggingLevel)
+	if port != nil {
+		serverConfig.App.Port = *port
+	}
+	if authEnabled != nil {
+		serverConfig.Auth.Enabled = *authEnabled
+	}
+	if loggingLevel != nil && *loggingLevel != "" {
+		serverConfig.Logging.Level = *loggingLevel
+	}
 
 	err = serverConfig.Validate()
 	if err != nil {
@@ -75,7 +83,6 @@ func getSecretKey() []byte {
 		return nil
 	}
 
-	// Avoid per-start random secrets unless explicitly requested (they invalidate sessions on restart).
 	if config.GetBoolDefault("SESSION_SECRET_RANDOM", false) {
 		log.Printf("warning: SESSION_SECRET_RANDOM=true; using a random per-start session secret")
 		return generateSecretKey()
@@ -173,6 +180,10 @@ func setupProtectedRoutes(group *gin.RouterGroup) {
 		c.FileFromFS("html/dashboard.html", http.FS(staticSubFS))
 	})
 
+	group.GET("/config", func(c *gin.Context) {
+		c.FileFromFS("html/config.html", http.FS(staticSubFS))
+	})
+
 	group.GET("/admin", func(c *gin.Context) {
 		c.FileFromFS("html/dashboard.html", http.FS(staticSubFS))
 	})
@@ -180,6 +191,9 @@ func setupProtectedRoutes(group *gin.RouterGroup) {
 	group.POST("/upload", handlers.UploadHandler)
 	group.DELETE("/delete/file/:id", handlers.DeleteFileHandler)
 	group.DELETE("/delete/folder/:id", handlers.DeleteFolderHandler)
+
+	group.GET("/config/api", handlers.GetConfig)
+	group.PUT("/config/api", handlers.UpdateConfig)
 
 }
 

@@ -129,9 +129,14 @@ function updateTable(items) {
         
         // Name cell
         const nameCell = document.createElement('td');
-        // Add icon based on type
-        const icon = item.type === 'folder' ? '📁 ' : '📄 ';
-        nameCell.textContent = icon + (item.name || 'Unknown');
+        nameCell.className = 'inline-flex items-center gap-2';
+
+        const iconEl = document.createElement('i');
+        iconEl.className = item.type === 'folder' ? 'fa-solid fa-folder' : 'fa-regular fa-file';
+        iconEl.setAttribute('aria-hidden', 'true');
+        nameCell.appendChild(iconEl);
+
+        nameCell.appendChild(document.createTextNode(item.name || 'Unknown'));
         nameCell.title = item.name || 'Unknown'; // Tooltip for long names
         row.appendChild(nameCell);
         

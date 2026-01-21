@@ -4,97 +4,157 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LocalDrop - Dashboard</title>
-    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style type="text/tailwindcss">
+        @layer base {
+            body { @apply font-sans bg-slate-50 text-slate-900; }
+        }
+        @layer components {
+            .font-display { font-family: "Press Start 2P", cursive; }
+            .font-body { font-family: "Inter", system-ui, sans-serif; }
+
+            .retro-card { @apply bg-white border-2 border-slate-900 rounded-xl overflow-hidden shadow-[6px_6px_0_0_#0f172a]; }
+            .retro-card-sm { @apply bg-white border-2 border-slate-900 rounded-lg overflow-hidden shadow-[4px_4px_0_0_#0f172a]; }
+            .retro-btn { @apply inline-flex items-center gap-2 border-2 border-slate-900 rounded-lg px-4 py-2 font-semibold bg-amber-300 shadow-[4px_4px_0_0_#0f172a] transition-transform duration-200 ease-out; }
+            .retro-btn:hover { @apply -translate-x-0.5 -translate-y-0.5; }
+            .retro-btn:active { @apply translate-x-0.5 translate-y-0.5 shadow-[2px_2px_0_0_#0f172a]; }
+            .retro-btn.secondary { @apply bg-slate-200; }
+            .retro-btn.danger { @apply bg-rose-300; }
+            .retro-input { @apply w-full border-2 border-slate-900 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-4 focus:ring-slate-200 shadow-[3px_3px_0_0_#0f172a]; }
+            .retro-input:focus { @apply -translate-x-0.5 -translate-y-0.5 shadow-[4px_4px_0_0_#0f172a]; }
+
+            .retro-table { @apply w-full border-collapse; }
+            .retro-table th { @apply text-left text-xs uppercase tracking-widest bg-slate-100 border-b-2 border-slate-900 px-4 py-3; }
+            .retro-table td { @apply border-b border-slate-200 px-4 py-3; }
+            .retro-table tr:hover td { @apply bg-slate-50; }
+
+            .btn-link { @apply inline-flex items-center gap-1 border-2 border-slate-900 rounded-md px-2 py-1 text-sm bg-amber-200 shadow-[2px_2px_0_0_#0f172a] transition-transform duration-200 ease-out; }
+            .btn-link:hover { @apply -translate-x-0.5 -translate-y-0.5; }
+            .btn-link:active { @apply translate-x-0.5 translate-y-0.5 shadow-[1px_1px_0_0_#0f172a]; }
+            .btn-link.delete { @apply bg-rose-300; }
+
+            .loading { @apply flex flex-col items-center justify-center py-10 text-slate-600; }
+            .loading-spinner { @apply h-10 w-10 rounded-full border-4 border-slate-200 border-t-slate-900 animate-spin mb-3; }
+            .empty-state { @apply text-center py-10 text-slate-600; }
+            .empty-icon { @apply text-4xl mb-3; }
+
+            .modal { @apply fixed inset-0 hidden items-center justify-center bg-black/50 backdrop-blur-sm z-50; }
+            .modal.show { @apply flex; }
+            .modal-content { @apply retro-card w-full max-w-lg; }
+
+            .toast { @apply fixed right-4 top-4 z-50 opacity-0 translate-x-6 pointer-events-none transition-all duration-200; }
+            .toast.show { @apply opacity-100 translate-x-0 pointer-events-auto; }
+            .toast-content { @apply retro-card-sm px-4 py-3 font-semibold; }
+            .toast.success .toast-content { @apply bg-emerald-300; }
+            .toast.error .toast-content { @apply bg-rose-300; }
+            .toast.info .toast-content { @apply bg-sky-300; }
+
+            .file-input-wrapper.disabled { @apply opacity-50 pointer-events-none; }
+            .file-input-wrapper.has-file .file-input-display { @apply border-2 border-emerald-600 bg-emerald-50; }
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .skeleton { position: relative; overflow: hidden; background: #e2e8f0; border-radius: 0.5rem; }
+        .skeleton::after { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent); transform: translateX(-100%); animation: shimmer 1.6s infinite; }
+    </style>
 </head>
-<body>
-    <header>
-        <div class="header-container">
-            <div class="logo">
-                <span class="logo-icon">📁</span>
-                <h1>LocalDrop</h1>
+<body class="font-body bg-slate-50 text-slate-900">
+    <header class="sticky top-0 z-40 bg-white border-b-2 border-slate-900 shadow-[0_4px_0_0_#0f172a]">
+        <div class="max-w-6xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-folder-open text-2xl" aria-hidden="true"></i>
+                <h1 class="font-display text-lg md:text-xl">LocalDrop</h1>
             </div>
-            <nav class="header-nav">
-                <a href="/dashboard" class="nav-link active">Dashboard</a>
-                <a href="/download" class="nav-link">Files</a>
-                <button id="logoutBtn" class="logout-btn">
-                    <span class="logout-icon">🚪</span>
+            <nav class="flex flex-wrap items-center gap-3">
+                <a href="/dashboard" class="nav-link active retro-btn secondary">Dashboard</a>
+                <a href="/download" class="nav-link retro-btn secondary">Files</a>
+                <a href="/config" class="nav-link retro-btn secondary">Config</a>
+                <button id="logoutBtn" class="logout-btn retro-btn danger">
+                    <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
                     Logout
                 </button>
             </nav>
         </div>
     </header>
 
-    <div class="container">
-        <div class="page-header">
-            <h2>Host Dashboard</h2>
-            <p class="page-description">Upload and manage your shared files</p>
+    <div class="max-w-6xl mx-auto px-6 py-10">
+        <div class="text-center mb-10">
+            <h2 class="font-display text-xl md:text-2xl">Host Dashboard</h2>
+            <p class="page-description text-slate-600 mt-3">Upload and manage your shared files</p>
         </div>
 
-        <div class="dashboard-grid">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <!-- Upload Section -->
-            <div class="upload-section">
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Upload File</h3>
-                        <span class="upload-icon">📤</span>
+            <div class="upload-section lg:col-span-1">
+                <div class="card retro-card">
+                    <div class="card-header flex items-center justify-between px-6 py-4 border-b-2 border-slate-900 bg-slate-100">
+                        <h3 class="font-display text-sm">Upload File</h3>
+                        <i class="fa-solid fa-upload" aria-hidden="true"></i>
                     </div>
-                    <form id="uploadForm" method="post" enctype="multipart/form-data" action="/upload">
-                        <div class="form-group">
-                            <label>Select Content</label>
-                            <div class="file-input-group">
+                    <form id="uploadForm" method="post" enctype="multipart/form-data" action="/upload" class="p-6 space-y-5">
+                        <div class="form-group space-y-2">
+                            <label class="text-sm font-semibold">Select Content</label>
+                            <div class="file-input-group grid grid-cols-1 gap-4">
                                 <div class="file-input-wrapper">
                                     <input type="file" name="file" id="fileEl" multiple>
-                                    <div class="file-input-display">
-                                        <span class="file-icon">📄</span>
-                                        <span class="file-text">Choose files...</span>
+                                    <div class="file-input-display flex w-full min-w-0 items-center gap-2 border-2 border-dashed border-slate-900 rounded-lg px-3 py-3 bg-white shadow-[3px_3px_0_0_#0f172a] transition">
+                                        <i class="file-icon fa-regular fa-file" aria-hidden="true"></i>
+                                        <span class="file-text text-sm font-semibold min-w-0 truncate">Choose files...</span>
                                     </div>
                                 </div>
                                 <div class="file-input-wrapper folder-wrapper">
                                     <input type="file" name="folder" id="folderEl" webkitdirectory directory multiple>
-                                    <div class="file-input-display">
-                                        <span class="file-icon">📁</span>
-                                        <span class="file-text">Choose folder...</span>
+                                    <div class="file-input-display flex w-full min-w-0 items-center gap-2 border-2 border-dashed border-slate-900 rounded-lg px-3 py-3 bg-white shadow-[3px_3px_0_0_#0f172a] transition">
+                                        <i class="file-icon fa-solid fa-folder" aria-hidden="true"></i>
+                                        <span class="file-text text-sm font-semibold min-w-0 truncate">Choose folder...</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="fileName">File Name</label>
-                            <input type="text" name="fileName" id="fileName" placeholder="Enter file name (optional)">
+                        <div class="form-group space-y-2">
+                            <label for="fileName" class="text-sm font-semibold">File Name</label>
+                            <input type="text" name="fileName" id="fileName" placeholder="Enter file name (optional)" class="retro-input">
                         </div>
 
-                        <div class="form-group">
-                            <label for="pinCode">PIN Protection (Optional)</label>
-                            <input type="text" name="pinCode" id="pinCode" placeholder="Enter PIN to protect file" maxlength="10">
-                            <small class="form-help">Leave empty for public access</small>
+                        <div class="form-group space-y-2">
+                            <label for="pinCode" class="text-sm font-semibold">PIN Protection (Optional)</label>
+                            <input type="text" name="pinCode" id="pinCode" placeholder="Enter PIN to protect file" maxlength="10" class="retro-input">
+                            <small class="form-help text-xs text-slate-600">Leave empty for public access</small>
                         </div>
 
-                        <button type="submit" id="submitButton" class="upload-btn">
+                        <button type="submit" id="submitButton" class="upload-btn retro-btn w-full justify-center bg-emerald-300">
                             <span class="btn-text">Upload File</span>
-                            <span class="btn-spinner" style="display: none;">⏳</span>
+                            <span class="btn-spinner" style="display: none;"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i></span>
                         </button>
                     </form>
                 </div>
             </div>
 
             <!-- Files Section -->
-            <div class="files-section">
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Uploaded Files</h3>
-                        <div class="card-actions">
-                            <button id="refreshBtn" class="icon-btn" title="Refresh">
-                                <span class="refresh-icon">🔄</span>
+            <div class="files-section lg:col-span-2">
+                <div class="card retro-card">
+                    <div class="card-header flex items-center justify-between px-6 py-4 border-b-2 border-slate-900 bg-slate-100">
+                        <h3 class="font-display text-sm">Uploaded Files</h3>
+                        <div class="card-actions flex gap-2">
+                            <button id="refreshBtn" class="icon-btn retro-btn secondary !px-3 !py-2" title="Refresh">
+                                <i class="refresh-icon fa-solid fa-rotate" aria-hidden="true"></i>
                             </button>
-                            <a href="/download" class="icon-btn" title="View Download Page">
-                                <span>🔗</span>
+                            <a href="/download" class="icon-btn retro-btn secondary !px-3 !py-2" title="View Download Page">
+                                <i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i>
                             </a>
                         </div>
                     </div>
                     
-                    <div class="table-wrapper">
-                        <table id="tableOfContent">
+                    <div class="table-wrapper relative min-h-[220px]">
+                        <table id="tableOfContent" class="retro-table">
                             <!-- Table content will be populated by JavaScript -->
                         </table>
                         <div id="loading" class="loading">
@@ -102,8 +162,8 @@
                             <p>Loading files...</p>
                         </div>
                         <div id="emptyState" class="empty-state" style="display: none;">
-                            <div class="empty-icon">📄</div>
-                            <h4>No files uploaded yet</h4>
+                            <div class="empty-icon"><i class="fa-regular fa-file" aria-hidden="true"></i></div>
+                            <h4 class="font-display text-xs">No files uploaded yet</h4>
                             <p>Upload your first file using the form above.</p>
                         </div>
                     </div>
@@ -115,18 +175,18 @@
     <!-- Delete Confirmation Modal -->
     <div id="deleteModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h3>Confirm Deletion</h3>
-                <button class="modal-close" id="closeDeleteModal">&times;</button>
+            <div class="modal-header flex items-center justify-between px-6 py-4 border-b-2 border-slate-900 bg-slate-100">
+                <h3 class="font-display text-sm">Confirm Deletion</h3>
+                <button class="modal-close text-xl" id="closeDeleteModal">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="warning-icon">⚠️</div>
+            <div class="modal-body p-6 space-y-3">
+                <div class="warning-icon text-2xl"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i></div>
                 <p>Are you sure you want to delete this file?</p>
-                <p class="file-name-display" id="fileNameToDelete"></p>
-                <p class="warning-text">This action cannot be undone.</p>
-                <div class="modal-actions">
-                    <button id="cancelDelete" class="btn-secondary">Cancel</button>
-                    <button id="confirmDelete" class="btn-danger">Delete</button>
+                <p class="file-name-display font-semibold" id="fileNameToDelete"></p>
+                <p class="warning-text text-sm text-slate-600">This action cannot be undone.</p>
+                <div class="modal-actions flex flex-wrap gap-3 justify-end">
+                    <button id="cancelDelete" class="btn-secondary retro-btn secondary">Cancel</button>
+                    <button id="confirmDelete" class="btn-danger retro-btn danger">Delete</button>
                 </div>
             </div>
         </div>

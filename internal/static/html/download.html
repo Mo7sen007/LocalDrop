@@ -4,38 +4,80 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LocalDrop - Files</title>
-    <link rel="stylesheet" href="/static/css/download.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style type="text/tailwindcss">
+        @layer base {
+            body { @apply font-sans bg-slate-50 text-slate-900; }
+        }
+        @layer components {
+            .font-display { font-family: "Press Start 2P", cursive; }
+            .font-body { font-family: "Inter", system-ui, sans-serif; }
+
+            .retro-card { @apply bg-white border-2 border-slate-900 rounded-xl overflow-hidden shadow-[6px_6px_0_0_#0f172a]; }
+            .retro-card-sm { @apply bg-white border-2 border-slate-900 rounded-lg overflow-hidden shadow-[4px_4px_0_0_#0f172a]; }
+            .retro-btn { @apply inline-flex items-center gap-2 border-2 border-slate-900 rounded-lg px-4 py-2 font-semibold bg-amber-300 shadow-[4px_4px_0_0_#0f172a] transition-transform duration-200 ease-out; }
+            .retro-btn:hover { @apply -translate-x-0.5 -translate-y-0.5; }
+            .retro-btn:active { @apply translate-x-0.5 translate-y-0.5 shadow-[2px_2px_0_0_#0f172a]; }
+            .retro-btn.secondary { @apply bg-slate-200; }
+            .retro-btn.primary { @apply bg-emerald-300; }
+            .retro-input { @apply w-full border-2 border-slate-900 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-4 focus:ring-slate-200 shadow-[3px_3px_0_0_#0f172a]; }
+            .retro-input:focus { @apply -translate-x-0.5 -translate-y-0.5 shadow-[4px_4px_0_0_#0f172a]; }
+
+            .retro-table { @apply w-full border-collapse; }
+            .retro-table th { @apply text-left text-xs uppercase tracking-widest bg-slate-100 border-b-2 border-slate-900 px-4 py-3; }
+            .retro-table td { @apply border-b border-slate-200 px-4 py-3; }
+            .retro-table tr:hover td { @apply bg-slate-50; }
+
+            .download-cell { @apply inline-flex items-center gap-2 border-2 border-slate-900 rounded-md px-2 py-1 text-sm bg-sky-200 shadow-[2px_2px_0_0_#0f172a] transition-transform duration-200 ease-out; }
+            .download-cell:hover { @apply -translate-x-0.5 -translate-y-0.5; }
+            .download-cell:active { @apply translate-x-0.5 translate-y-0.5 shadow-[1px_1px_0_0_#0f172a]; }
+            .file-size { @apply inline-flex items-center text-xs px-2 py-1 border-2 border-slate-900 rounded-md bg-slate-100 shadow-[2px_2px_0_0_#0f172a]; }
+
+            .loading { @apply flex flex-col items-center justify-center py-10 text-slate-600; }
+            .loading-spinner { @apply h-10 w-10 rounded-full border-4 border-slate-200 border-t-slate-900 animate-spin mb-3; }
+            .empty-state { @apply text-center py-10 text-slate-600; }
+            .empty-icon { @apply text-4xl mb-3; }
+
+            .modal { @apply fixed inset-0 hidden items-center justify-center bg-black/50 backdrop-blur-sm z-50; }
+            .modal.show { @apply flex; }
+            .modal-content { @apply retro-card w-full max-w-md; }
+        }
+    </style>
 </head>
-<body>
-    <header>
-        <div class="header-container">
-            <div class="logo">
-                <span class="logo-icon">📁</span>
-                <h1>LocalDrop</h1>
+<body class="font-body bg-slate-50 text-slate-900">
+    <header class="sticky top-0 z-40 bg-white border-b-2 border-slate-900 shadow-[0_4px_0_0_#0f172a]">
+        <div class="max-w-6xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-folder-open text-2xl" aria-hidden="true"></i>
+                <h1 class="font-display text-lg md:text-xl">LocalDrop</h1>
             </div>
-            <nav class="header-nav">
-                <a href="/dashboard" class="nav-link">Dashboard</a>
-                <a href="/download" class="nav-link active">Files</a>
+            <nav class="flex flex-wrap items-center gap-3">
+                <a href="/dashboard" class="nav-link retro-btn secondary">Dashboard</a>
+                <a href="/download" class="nav-link active retro-btn secondary">Files</a>
             </nav>
         </div>
     </header>
 
-    <div class="container">
-        <div class="page-header">
-            <h2>Available Files</h2>
-            <p class="page-description">Download files shared on this LocalDrop instance</p>
+    <div class="max-w-6xl mx-auto px-6 py-10">
+        <div class="text-center mb-10">
+            <h2 class="font-display text-xl md:text-2xl">Available Files</h2>
+            <p class="page-description text-slate-600 mt-3">Download files shared on this LocalDrop instance</p>
         </div>
 
-        <div class="table-container">
-            <div class="table-header">
-                <h3>File List</h3>
-                <button id="refreshBtn" class="refresh-btn">
-                    <span class="refresh-icon">🔄</span>
+        <div class="table-container retro-card">
+            <div class="table-header flex items-center justify-between px-6 py-4 border-b-2 border-slate-900 bg-slate-100">
+                <h3 class="font-display text-sm">File List</h3>
+                <button id="refreshBtn" class="refresh-btn retro-btn secondary">
+                    <i class="refresh-icon fa-solid fa-rotate" aria-hidden="true"></i>
                     Refresh
                 </button>
             </div>
-            <div class="table-wrapper">
-                <table id="tableOfContent">
+            <div class="table-wrapper relative min-h-[260px]">
+                <table id="tableOfContent" class="retro-table">
                     <!-- Table content will be populated by JavaScript -->
                 </table>
                 <div id="loading" class="loading">
@@ -43,8 +85,8 @@
                     <p>Loading files...</p>
                 </div>
                 <div id="emptyState" class="empty-state" style="display: none;">
-                    <div class="empty-icon">📄</div>
-                    <h3>No files available</h3>
+                    <div class="empty-icon"><i class="fa-regular fa-file" aria-hidden="true"></i></div>
+                    <h3 class="font-display text-xs">No files available</h3>
                     <p>There are currently no files shared on this instance.</p>
                 </div>
             </div>
@@ -54,16 +96,16 @@
     <!-- Pin Modal -->
     <div id="pinModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h3>Enter PIN</h3>
-                <button class="modal-close" id="closeModal">&times;</button>
+            <div class="modal-header flex items-center justify-between px-6 py-4 border-b-2 border-slate-900 bg-slate-100">
+                <h3 class="font-display text-sm">Enter PIN</h3>
+                <button class="modal-close text-xl" id="closeModal">&times;</button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body p-6 space-y-4">
                 <p>This file is protected. Please enter the PIN to download:</p>
-                <input type="password" id="pinInput" placeholder="Enter PIN" maxlength="10">
-                <div class="modal-actions">
-                    <button id="cancelPin" class="btn-secondary">Cancel</button>
-                    <button id="submitPin" class="btn-primary">Download</button>
+                <input type="password" id="pinInput" placeholder="Enter PIN" maxlength="10" class="retro-input">
+                <div class="modal-actions flex flex-wrap gap-3 justify-end">
+                    <button id="cancelPin" class="btn-secondary retro-btn secondary">Cancel</button>
+                    <button id="submitPin" class="btn-primary retro-btn primary">Download</button>
                 </div>
             </div>
         </div>
