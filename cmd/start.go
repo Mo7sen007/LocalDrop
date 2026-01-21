@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Mo7sen007/LocalDrop/internal"
+	"github.com/Mo7sen007/LocalDrop/internal/config"
 	"github.com/Mo7sen007/LocalDrop/internal/paths"
 	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
 	"github.com/spf13/cobra"
@@ -22,10 +23,34 @@ var serveCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start the sharing server",
 	Run: func(cmd *cobra.Command, args []string) {
+		portOverride := (*int)(nil)
+		authOverride := (*bool)(nil)
+		if cmd.Flags().Changed("port") {
+			portOverride = &port
+		}
+		if cmd.Flags().Changed("auth") {
+			authOverride = &authEnabled
+		}
+
+		configPort := port
+		configAuth := authEnabled
+		if cfg, err := config.GetConfig(); err == nil {
+			configPort = cfg.App.Port
+			configAuth = cfg.Auth.Enabled
+		}
+
+		effectivePort := configPort
+		effectiveAuth := configAuth
+		if portOverride != nil {
+			effectivePort = *portOverride
+		}
+		if authOverride != nil {
+			effectiveAuth = *authOverride
+		}
 
 		if debug {
 			fmt.Println("Starting server in debug mode (foreground)...")
-			startServer()
+			startServer(portOverride, authOverride, effectivePort, effectiveAuth)
 			return
 		}
 		//temp, must be changed!
@@ -41,8 +66,8 @@ var serveCmd = &cobra.Command{
 			return
 		}
 
-		if isPortInUse(strconv.Itoa(port)) {
-			fmt.Printf("Port %d is already in use by another application.\n", port)
+		if isPortInUse(strconv.Itoa(effectivePort)) {
+			fmt.Printf("Port %d is already in use by another application.\n", effectivePort)
 			fmt.Println("Choose a different port with --port flag")
 			return
 		}
@@ -53,8 +78,11 @@ var serveCmd = &cobra.Command{
 			return
 		}
 
-		args = []string{"start", "--debug", "--port", strconv.Itoa(port)}
-		if authEnabled {
+		args = []string{"start", "--debug"}
+		if portOverride != nil {
+			args = append(args, "--port", strconv.Itoa(*portOverride))
+		}
+		if authOverride != nil && *authOverride {
 			args = append(args, "--auth")
 		}
 		bgCmd := exec.Command(execPath, args...)
@@ -73,7 +101,7 @@ var serveCmd = &cobra.Command{
 
 		pid := bgCmd.Process.Pid
 
-		pidInfo := fmt.Sprintf("%d:%d", pid, port)
+		pidInfo := fmt.Sprintf("%d:%d", pid, effectivePort)
 		err = os.WriteFile(pidFile, []byte(pidInfo), 0644)
 		if err != nil {
 			fmt.Println("Failed to write PID file:", err)
@@ -81,7 +109,7 @@ var serveCmd = &cobra.Command{
 		}
 
 		fmt.Printf("LocalDrop server started in background with PID %d\n", pid)
-		fmt.Printf("Server running on http://localhost:%d\n", port)
+		fmt.Printf("Server running on http://localhost:%d\n", effectivePort)
 		fmt.Println("Use 'localdrop stop' to stop the server")
 	},
 }
@@ -128,7 +156,7 @@ func isPortInUse(port string) bool {
 	return false
 }
 
-func startServer() {
+func startServer(portOverride *int, authOverride *bool, effectivePort int, effectiveAuth bool) {
 	if err := paths.Initialize(); err != nil {
 		fmt.Println("Failed to initialize storage:", err)
 		return
@@ -136,8 +164,8 @@ func startServer() {
 
 	if debug {
 		fmt.Println("Storage initialized successfully")
-		fmt.Printf("Starting server on port %d...\n", port)
-		if authEnabled {
+		fmt.Printf("Starting server on port %d...\n", effectivePort)
+		if effectiveAuth {
 			fmt.Println("Admin authentication: ENABLED")
 		} else {
 			fmt.Println("Admin authentication: DISABLED")
@@ -147,7 +175,7 @@ func startServer() {
 	serverlog.InitLogToFile()
 	defer serverlog.LogFile.Close()
 
-	server := internal.NewServer(port, authEnabled, "full")
+	server := internal.NewServer(portOverride, authOverride, nil)
 	if err := server.Init(); err != nil {
 		fmt.Printf("Failed to initialize server: %v\n", err)
 		return
@@ -157,7 +185,7 @@ func startServer() {
 	//mdnsServer.Shutdown()
 
 	if debug {
-		fmt.Printf("Server ready at http://localhost:%d\n", port)
+		fmt.Printf("Server ready at http://localhost:%d\n", effectivePort)
 		fmt.Println("Press Ctrl+C to stop")
 	}
 

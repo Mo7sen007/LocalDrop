@@ -6,6 +6,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"github.com/Mo7sen007/LocalDrop/internal/paths"
 	"github.com/Mo7sen007/LocalDrop/internal/services"
@@ -62,11 +63,7 @@ func UploadHandler(c *gin.Context) {
 			c.String(http.StatusBadRequest, "No file provided")
 			return
 		}
-		if folderID == nil {
-			c.String(http.StatusBadRequest, "folderId is required for type=file")
-			return
-		}
-		if err := handleSingleFile(c, files[0], pinCode, *folderID); err != nil {
+		if err := handleSingleFile(files[0], pinCode, folderID, basePath); err != nil {
 			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -98,34 +95,74 @@ func UploadHandler(c *gin.Context) {
 	}
 }
 
-func handleSingleFile(c *gin.Context, fh *multipart.FileHeader, pin string, folderID uuid.UUID) error {
-	folder, err := storage.GetFolder(folderID)
-	if err != nil {
-		return fmt.Errorf("folder not found: %w", err)
+func uniqueDiskName(original string) string {
+	ext := filepath.Ext(original)
+	base := strings.TrimSuffix(original, ext)
+	if base == "" {
+		base = "upload"
 	}
-	uniqueName := fh.Filename + uuid.New().String() + filepath.Ext(fh.Filename)
-	diskPath := filepath.Join(folder.Path, uniqueName)
-	if err := c.SaveUploadedFile(fh, diskPath); err != nil {
+	return fmt.Sprintf("%s-%s%s", base, uuid.New().String(), ext)
+}
+
+func handleSingleFile(fh *multipart.FileHeader, pin string, folderID *uuid.UUID, basePath string) error {
+	var targetDir string
+	var fileFolderID *uuid.UUID
+
+	if folderID != nil {
+		folder, err := storage.GetFolder(*folderID)
+		if err != nil {
+			return fmt.Errorf("folder not found: %w", err)
+		}
+		targetDir = folder.Path
+		fileFolderID = &folder.ID
+	} else {
+		if basePath == "" {
+			return fmt.Errorf("no base path available for upload")
+		}
+		targetDir = basePath
+		fileFolderID = nil
+	}
+
+	diskPath := filepath.Join(targetDir, uniqueDiskName(fh.Filename))
+	if err := services.SaveUploadedFile(fh, diskPath); err != nil {
 		return fmt.Errorf("save uploaded file: %w", err)
 	}
-	if err := services.SaveFile(fh.Filename, diskPath, pin, &folder.ID); err != nil {
+	if err := services.SaveFile(fh.Filename, diskPath, pin, fileFolderID); err != nil {
 		return fmt.Errorf("save file meta: %w", err)
 	}
 	return nil
 }
 
 func handleMultipleFiles(files []*multipart.FileHeader, pin string, folderID *uuid.UUID, basePath string) error {
+	var targetDir string
+	var fileFolderID *uuid.UUID
 
-	var targetPath = basePath
 	if folderID != nil {
 		f, err := storage.GetFolder(*folderID)
-		if err == nil {
-			targetPath = f.Path
+		if err != nil {
+			return fmt.Errorf("folder not found: %w", err)
 		}
+		targetDir = f.Path
+		fileFolderID = &f.ID
+	} else {
+		if basePath == "" {
+			return fmt.Errorf("no base path available for upload")
+		}
+		targetDir = basePath
+		fileFolderID = nil
 	}
+
 	for _, fh := range files {
-		if err := services.SaveFile(fh.Filename, targetPath, pin, folderID); err != nil {
-			log.Printf("failed saving %s: %v", fh.Filename, err)
+		diskPath := filepath.Join(targetDir, uniqueDiskName(fh.Filename))
+
+		if err := services.SaveUploadedFile(fh, diskPath); err != nil {
+			log.Printf("failed saving uploaded bytes for %s: %v", fh.Filename, err)
+			continue
+		}
+
+		if err := services.SaveFile(fh.Filename, diskPath, pin, fileFolderID); err != nil {
+			log.Printf("failed saving metadata for %s: %v", fh.Filename, err)
+			continue
 		}
 	}
 	return nil

@@ -382,8 +382,7 @@ tr:last-child td {
 }
 
 .delete-cell:before {
-    content: '🗑️';
-    margin-right: 0.5rem;
+    content: '';
 }
 
 .file-id {

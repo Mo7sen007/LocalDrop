@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/Mo7sen007/LocalDrop/internal/models"
 	"github.com/Mo7sen007/LocalDrop/internal/paths"
@@ -62,13 +63,20 @@ func SaveConfig(c *models.Config) error {
 		log.Printf("Couldn't get config file path, error:%v", err)
 		return err
 	}
-	data, err := yaml.Marshal(&c)
+
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o775); err != nil {
+		return err
+	}
+
+	data, err := yaml.Marshal(c)
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(configPath, data, 0664)
-	if err != nil {
+
+	tmpPath := configPath + ".tmp"
+	if err := os.WriteFile(tmpPath, data, 0o664); err != nil {
 		return err
 	}
-	return nil
+
+	return os.Rename(tmpPath, configPath)
 }

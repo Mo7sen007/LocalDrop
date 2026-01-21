@@ -5,28 +5,28 @@ import (
 )
 
 type Config struct {
-	App     AppConfig     `yaml:"server"`
-	Storage StorageConfig `yaml:"storage"`
-	Auth    AuthConfig    `yaml:"auth"`
-	Logging LoggingConfig `yaml:"logging"`
+	App     AppConfig     `yaml:"server" json:"server"`
+	Storage StorageConfig `yaml:"storage" json:"storage"`
+	Auth    AuthConfig    `yaml:"auth" json:"auth"`
+	Logging LoggingConfig `yaml:"logging" json:"logging"`
 }
 
 type AppConfig struct {
-	Port int `yaml:"port"`
+	Port int `yaml:"port" json:"port"`
 }
 
 type StorageConfig struct {
-	BasePath    string `yaml:"base_path"`
-	MaxFileSize int64  `yaml:"max_size"`
+	BasePath    string `yaml:"base_path" json:"base_path"`
+	MaxFileSize int64  `yaml:"max_size" json:"max_size"`
 }
 
 type AuthConfig struct {
-	Enabled bool `yaml:"authentication"`
+	Enabled bool `yaml:"authentication" json:"authentication"`
 }
 
 type LoggingConfig struct {
-	Enabled bool   `yaml:"logging"`
-	Level   string `yaml:"logging_level"`
+	Enabled bool   `yaml:"logging" json:"logging"`
+	Level   string `yaml:"logging_level" json:"logging_level"`
 }
 
 func NewAppConfig(port int) AppConfig {

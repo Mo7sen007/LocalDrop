@@ -149,7 +149,7 @@ async function loadFiles(folderId = null) {
             backRow.className = 'folder-row back-row';
             backRow.innerHTML = `
                 <td colspan="5" style="cursor: pointer; font-weight: bold;">
-                    ⬅️ Back to parent folder
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true" style="margin-right: 0.5rem;"></i>Back to parent folder
                 </td>
             `;
             backRow.onclick = () => navigateBack();
@@ -163,7 +163,7 @@ async function loadFiles(folderId = null) {
                 row.className = 'folder-row';
                 row.style.cursor = 'pointer';
                 row.innerHTML = `
-                    <td class="folder-name">📁 ${folder.name}</td>
+                    <td class="folder-name"><i class="fa-solid fa-folder" aria-hidden="true" style="margin-right: 0.5rem;"></i>${folder.name}</td>
                     <td>-</td>
                     <td>Folder</td>
                     <td>${new Date(folder.created_at).toLocaleDateString()}</td>
@@ -217,7 +217,7 @@ function renderBackButton(table) {
     backRow.style.cursor = 'pointer';
     backRow.innerHTML = `
         <td colspan="5" style="font-weight: bold;">
-            ⬅️ Back to parent folder
+            <i class="fa-solid fa-arrow-left" aria-hidden="true" style="margin-right: 0.5rem;"></i>Back to parent folder
         </td>
     `;
     backRow.onclick = () => navigateBack();
