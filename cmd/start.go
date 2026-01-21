@@ -172,8 +172,16 @@ func startServer(portOverride *int, authOverride *bool, effectivePort int, effec
 		}
 	}
 
-	serverlog.InitLogToFile()
-	defer serverlog.LogFile.Close()
+	logEnabled := true
+	logLevel := "info"
+	if cfg, err := config.GetConfig(); err == nil {
+		logEnabled = cfg.Logging.Enabled
+		logLevel = cfg.Logging.Level
+	}
+	if err := serverlog.InitLogToFile(logEnabled, logLevel); err != nil {
+		fmt.Printf("Failed to initialize logging: %v\n", err)
+	}
+	defer serverlog.Close()
 
 	server := internal.NewServer(portOverride, authOverride, nil)
 	if err := server.Init(); err != nil {

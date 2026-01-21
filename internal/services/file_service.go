@@ -3,7 +3,6 @@ package services
 import (
 	"fmt"
 	"io"
-	"log"
 	"mime"
 	"mime/multipart"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Mo7sen007/LocalDrop/internal/models"
+	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
 	"github.com/Mo7sen007/LocalDrop/internal/storage"
 
 	"github.com/google/uuid"
@@ -83,12 +83,12 @@ func SaveFile(filename string, diskPath string, pinCode string, folderID *uuid.U
 	if err := storage.CreateFile(&uploadedFile); err != nil {
 		// If database insert fails, clean up the physical file
 		os.Remove(diskPath)
-		log.Printf("Failed to save file metadata to database: %v", err)
+		serverlog.Errorf("Failed to save file metadata to database: %v", err)
 		return fmt.Errorf("could not save file to database: %w", err)
 	}
 
 	// Log successful upload
-	log.Printf("Successfully uploaded file: %s (ID: %s, Size: %d bytes)",
+	serverlog.Infof("Successfully uploaded file: %s (ID: %s, Size: %d bytes)",
 		filename, uploadedFile.ID.String(), uploadedFile.Size)
 
 	return nil

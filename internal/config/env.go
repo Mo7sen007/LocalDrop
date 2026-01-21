@@ -2,18 +2,18 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"strings"
 
+	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
 	"github.com/joho/godotenv"
 )
 
 func LoadDotEnv() {
 	if _, err := os.Stat(".env"); err == nil {
 		if err := godotenv.Load(); err != nil {
-			log.Printf("warning: failed to load .env: %v", err)
+			serverlog.Warnf("failed to load .env: %v", err)
 		}
 	}
 }
@@ -66,7 +66,7 @@ func GetBool(key string) (bool, bool, error) {
 func GetBoolDefault(key string, defaultValue bool) bool {
 	value, ok, err := GetBool(key)
 	if err != nil {
-		log.Printf("warning: %v (using default %v)", err, defaultValue)
+		serverlog.Warnf("%v (using default %v)", err, defaultValue)
 		return defaultValue
 	}
 	if !ok {
@@ -90,7 +90,7 @@ func GetInt(key string) (int, bool, error) {
 func GetIntDefault(key string, defaultValue int) int {
 	value, ok, err := GetInt(key)
 	if err != nil {
-		log.Printf("warning: %v (using default %d)", err, defaultValue)
+		serverlog.Warnf("%v (using default %d)", err, defaultValue)
 		return defaultValue
 	}
 	if !ok {

@@ -19,10 +19,11 @@
 
             .retro-card { @apply bg-white border-2 border-slate-900 rounded-xl overflow-hidden shadow-[6px_6px_0_0_#0f172a]; }
             .retro-card-sm { @apply bg-white border-2 border-slate-900 rounded-lg overflow-hidden shadow-[4px_4px_0_0_#0f172a]; }
-            .retro-btn { @apply inline-flex items-center gap-2 border-2 border-slate-900 rounded-lg px-4 py-2 font-semibold bg-amber-300 shadow-[4px_4px_0_0_#0f172a] transition-transform duration-200 ease-out; }
+            .retro-btn { @apply inline-flex items-center gap-2 border-2 border-slate-900 rounded-lg px-4 py-2 font-semibold bg-slate-200 shadow-[4px_4px_0_0_#0f172a] transition-transform duration-200 ease-out; }
             .retro-btn:hover { @apply -translate-x-0.5 -translate-y-0.5; }
             .retro-btn:active { @apply translate-x-0.5 translate-y-0.5 shadow-[2px_2px_0_0_#0f172a]; }
             .retro-btn.secondary { @apply bg-slate-200; }
+            .retro-btn.primary { @apply bg-emerald-300; }
             .retro-btn.danger { @apply bg-rose-300; }
             .retro-input { @apply w-full border-2 border-slate-900 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-4 focus:ring-slate-200 shadow-[3px_3px_0_0_#0f172a]; }
             .retro-input:focus { @apply -translate-x-0.5 -translate-y-0.5 shadow-[4px_4px_0_0_#0f172a]; }
@@ -32,10 +33,18 @@
             .retro-table td { @apply border-b border-slate-200 px-4 py-3; }
             .retro-table tr:hover td { @apply bg-slate-50; }
 
-            .btn-link { @apply inline-flex items-center gap-1 border-2 border-slate-900 rounded-md px-2 py-1 text-sm bg-amber-200 shadow-[2px_2px_0_0_#0f172a] transition-transform duration-200 ease-out; }
+            .btn-link { @apply inline-flex items-center gap-1 border-2 border-slate-900 rounded-md px-2 py-1 text-sm bg-slate-200 shadow-[2px_2px_0_0_#0f172a] transition-transform duration-200 ease-out; }
             .btn-link:hover { @apply -translate-x-0.5 -translate-y-0.5; }
             .btn-link:active { @apply translate-x-0.5 translate-y-0.5 shadow-[1px_1px_0_0_#0f172a]; }
+            .btn-link.primary { @apply bg-emerald-300; }
             .btn-link.delete { @apply bg-rose-300; }
+
+            .name-cell { @apply min-w-0; }
+            .name-stack { @apply flex items-center gap-2 min-w-0; }
+            .name-text { @apply truncate font-semibold; }
+            .copy-btn { @apply inline-flex items-center justify-center border-2 border-slate-900 rounded-md w-8 h-8 bg-slate-200 shadow-[2px_2px_0_0_#0f172a] transition-transform duration-200 ease-out; }
+            .copy-btn:hover { @apply -translate-x-0.5 -translate-y-0.5; }
+            .copy-btn:active { @apply translate-x-0.5 translate-y-0.5 shadow-[1px_1px_0_0_#0f172a]; }
 
             .loading { @apply flex flex-col items-center justify-center py-10 text-slate-600; }
             .loading-spinner { @apply h-10 w-10 rounded-full border-4 border-slate-200 border-t-slate-900 animate-spin mb-3; }
@@ -90,9 +99,9 @@
             <p class="page-description text-slate-600 mt-3">Upload and manage your shared files</p>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <!-- Upload Section -->
-            <div class="upload-section lg:col-span-1">
+            <div class="upload-section lg:col-span-5 min-w-0">
                 <div class="card retro-card">
                     <div class="card-header flex items-center justify-between px-6 py-4 border-b-2 border-slate-900 bg-slate-100">
                         <h3 class="font-display text-sm">Upload File</h3>
@@ -130,7 +139,7 @@
                             <small class="form-help text-xs text-slate-600">Leave empty for public access</small>
                         </div>
 
-                        <button type="submit" id="submitButton" class="upload-btn retro-btn w-full justify-center bg-emerald-300">
+                        <button type="submit" id="submitButton" class="upload-btn retro-btn primary w-full justify-center">
                             <span class="btn-text">Upload File</span>
                             <span class="btn-spinner" style="display: none;"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i></span>
                         </button>
@@ -139,7 +148,7 @@
             </div>
 
             <!-- Files Section -->
-            <div class="files-section lg:col-span-2">
+            <div class="files-section lg:col-span-7 min-w-0">
                 <div class="card retro-card">
                     <div class="card-header flex items-center justify-between px-6 py-4 border-b-2 border-slate-900 bg-slate-100">
                         <h3 class="font-display text-sm">Uploaded Files</h3>

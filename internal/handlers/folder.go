@@ -4,13 +4,13 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/Mo7sen007/LocalDrop/internal/models"
 	"github.com/Mo7sen007/LocalDrop/internal/services"
+	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
 	"github.com/Mo7sen007/LocalDrop/internal/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -44,7 +44,7 @@ func DownloadFolderHandler(c *gin.Context) {
 			// Open file on disk
 			srcFile, err := os.Open(file.Path)
 			if err != nil {
-				log.Printf("Failed to open file %s: %v", file.Path, err)
+				serverlog.Errorf("Failed to open file %s: %v", file.Path, err)
 				continue
 			}
 			defer srcFile.Close()
@@ -69,7 +69,7 @@ func DownloadFolderHandler(c *gin.Context) {
 			// So we need to fetch the full subfolder object here.
 			fullSubFolder, err := storage.GetFolder(subFolder.ID)
 			if err != nil {
-				log.Printf("Failed to fetch subfolder %s: %v", subFolder.Name, err)
+				serverlog.Errorf("Failed to fetch subfolder %s: %v", subFolder.Name, err)
 				continue
 			}
 
@@ -82,7 +82,7 @@ func DownloadFolderHandler(c *gin.Context) {
 	}
 
 	if err := addFolderToZip(folder, ""); err != nil {
-		log.Printf("Error creating zip: %v", err)
+		serverlog.Errorf("Error creating zip: %v", err)
 		// Can't really change status code now as we might have started writing
 		return
 	}

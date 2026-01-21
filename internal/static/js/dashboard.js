@@ -162,14 +162,23 @@ async function loadFiles(folderId = null) {
                 const row = document.createElement('tr');
                 row.className = 'folder-row';
                 row.style.cursor = 'pointer';
+                const rawName = folder.name || '';
+                const displayName = escapeHtml(truncateName(rawName));
+                const fullName = escapeHtml(rawName);
+                const safeNameForJs = rawName.replace(/'/g, "\\'");
                 row.innerHTML = `
-                    <td class="folder-name"><i class="fa-solid fa-folder" aria-hidden="true" style="margin-right: 0.5rem;"></i>${folder.name}</td>
+                    <td class="name-cell">
+                        <div class="name-stack">
+                            <i class="fa-solid fa-folder" aria-hidden="true"></i>
+                            <span class="name-text" title="${fullName}">${displayName}</span>
+                        </div>
+                    </td>
                     <td>-</td>
                     <td>Folder</td>
                     <td>${new Date(folder.created_at).toLocaleDateString()}</td>
                     <td>
-                        <a href="/download-folder/${folder.id}" class="btn-link" onclick="event.stopPropagation()">Download</a>
-                        <button onclick="event.stopPropagation(); deleteFolder('${folder.id}', '${folder.name}')" class="btn-link delete">Delete</button>
+                        <a href="/download-folder/${folder.id}" class="btn-link primary" onclick="event.stopPropagation()">Download</a>
+                        <button onclick="event.stopPropagation(); deleteFolder('${folder.id}', '${safeNameForJs}')" class="btn-link delete">Delete</button>
                     </td>
                 `;
                 // Make the entire row clickable to open the folder
@@ -187,14 +196,27 @@ async function loadFiles(folderId = null) {
         if (data.files) {
             data.files.forEach(file => {
                 const row = document.createElement('tr');
+                const rawName = file.name || '';
+                const displayName = escapeHtml(truncateName(rawName));
+                const fullName = escapeHtml(rawName);
+                const safeNameForJs = rawName.replace(/'/g, "\\'");
+                const downloadLink = buildDownloadLink(file.id);
                 row.innerHTML = `
-                    <td>${file.name}</td>
+                    <td class="name-cell">
+                        <div class="name-stack">
+                            <i class="fa-regular fa-file" aria-hidden="true"></i>
+                            <span class="name-text" title="${fullName}">${displayName}</span>
+                            <button class="copy-btn" title="Copy download link" data-copy="${downloadLink}">
+                                <i class="fa-regular fa-copy" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                    </td>
                     <td>${formatBytes(file.size)}</td>
                     <td>${file.extension || 'file'}</td>
                     <td>${new Date(file.created_at).toLocaleDateString()}</td>
                     <td>
-                        <a href="/download/${file.id}" class="btn-link">Download</a>
-                        <button onclick="deleteFile('${file.id}', '${file.name}')" class="btn-link delete">Delete</button>
+                        <a href="/download/${file.id}" class="btn-link primary">Download</a>
+                        <button onclick="deleteFile('${file.id}', '${safeNameForJs}')" class="btn-link delete">Delete</button>
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -202,6 +224,20 @@ async function loadFiles(folderId = null) {
         }
         
         table.appendChild(tbody);
+
+        table.querySelectorAll('.copy-btn').forEach((btn) => {
+            btn.addEventListener('click', async (event) => {
+                event.stopPropagation();
+                const link = btn.getAttribute('data-copy');
+                if (!link) return;
+                try {
+                    await navigator.clipboard.writeText(link);
+                    showToast('Link copied to clipboard', 'success');
+                } catch (error) {
+                    showToast('Failed to copy link', 'error');
+                }
+            });
+        });
 
     } catch (error) {
         console.error('Error loading files:', error);
@@ -285,6 +321,7 @@ async function handleUpload(e) {
     const fileInput = document.getElementById('fileEl');
     const folderInput = document.getElementById('folderEl');
     const pinInput = document.getElementById('pinCode');
+    const fileNameInput = document.getElementById('fileName');
     const submitBtn = document.getElementById('submitButton');
 
     // Determine which input has files
@@ -304,6 +341,9 @@ async function handleUpload(e) {
     formData.append('folderId', currentFolderID);
     formData.append('pinCode', pinInput.value || '');
     formData.append('type', descriptor.type);
+    if (descriptor.type === 'file' && fileNameInput?.value) {
+        formData.append('fileName', fileNameInput.value.trim());
+    }
 
     for (const entry of descriptor.entries) {
         formData.append('files', entry.file);
@@ -347,6 +387,7 @@ async function handleUpload(e) {
             fileInput.value = '';
             folderInput.value = '';
             pinInput.value = '';
+            if (fileNameInput) fileNameInput.value = '';
             
             // Re-enable both inputs
             fileInput.disabled = false;
@@ -428,4 +469,23 @@ function showToast(message, type = 'info') {
     setTimeout(() => {
         toast.className = toast.className.replace('show', '');
     }, 3000);
+}
+
+function truncateName(name, head = 6, tail = 4) {
+    if (!name) return '';
+    if (name.length <= head + tail + 3) return name;
+    return `${name.slice(0, head)}...${name.slice(-tail)}`;
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function buildDownloadLink(id) {
+    return `${window.location.origin}/download/${id}`;
 }
