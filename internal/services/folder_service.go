@@ -2,7 +2,6 @@ package services
 
 import (
 	"fmt"
-	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/Mo7sen007/LocalDrop/internal/models"
 	"github.com/Mo7sen007/LocalDrop/internal/paths"
+	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
 	"github.com/Mo7sen007/LocalDrop/internal/storage"
 	"github.com/google/uuid"
 )
@@ -55,7 +55,7 @@ func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderI
 		// Look up the parent folder to get its path
 		parentFolder, err := storage.GetFolder(*parentFolderID)
 		if err != nil {
-			log.Printf("Parent folder with ID %s not found: %v", parentFolderID.String(), err)
+			serverlog.Warnf("Parent folder with ID %s not found: %v", parentFolderID.String(), err)
 			return fmt.Errorf("parent folder not found: %w", err)
 		}
 		// Use the parent folder's path as the base
@@ -103,7 +103,7 @@ func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderI
 						// Get the current parent's path
 						currentParent, err := storage.GetFolder(*currentParentID)
 						if err != nil {
-							log.Printf("Failed to get parent folder: %v", err)
+							serverlog.Errorf("Failed to get parent folder: %v", err)
 							continue
 						}
 						folderPath = filepath.Join(currentParent.Path, folderName)
@@ -113,7 +113,7 @@ func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderI
 
 					// Create the physical directory on disk
 					if err := os.MkdirAll(folderPath, os.ModePerm); err != nil {
-						log.Printf("Failed to create directory %s: %v", folderPath, err)
+						serverlog.Errorf("Failed to create directory %s: %v", folderPath, err)
 						continue
 					}
 
@@ -127,7 +127,7 @@ func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderI
 						PinCode:   nil, // Folders inherit access control
 					}
 					if err := storage.CreateFolder(&newFolder); err != nil {
-						log.Printf("Failed to create folder record %s: %v", folderName, err)
+						serverlog.Errorf("Failed to create folder record %s: %v", folderName, err)
 						continue
 					}
 
@@ -145,12 +145,12 @@ func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderI
 			return err
 		}
 		if err := SaveFile(fileHeader.Filename, finalPath, pinCode, currentParentID); err != nil {
-			log.Printf("Failed to save file %s: %v", fileHeader.Filename, err)
+			serverlog.Errorf("Failed to save file %s: %v", fileHeader.Filename, err)
 			// Continue with other files even if one fails
 			continue
 		}
 	}
 
-	log.Printf("Successfully uploaded folder structure with %d files", len(files))
+	serverlog.Infof("Successfully uploaded folder structure with %d files", len(files))
 	return nil
 }

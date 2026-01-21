@@ -2,11 +2,11 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 
 	"github.com/Mo7sen007/LocalDrop/internal/services"
+	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
 	"github.com/Mo7sen007/LocalDrop/internal/storage"
 
 	"github.com/gin-gonic/gin"
@@ -18,14 +18,14 @@ func DownloadFileHandler(c *gin.Context) {
 	pinCode := c.Query("pin")
 	fileId, err := uuid.Parse(fileIdStr)
 	if err != nil {
-		log.Printf("invalid UUID format:%v", err)
+		serverlog.Warnf("invalid UUID format:%v", err)
 		c.String(http.StatusBadRequest, "Invalid UUID format")
 		return
 	}
 
 	file, found := services.GetFileByID(fileId)
 	if !found {
-		log.Printf("File not found")
+		serverlog.Warnf("File not found")
 		c.String(http.StatusNotFound, "File not found")
 		return
 	}
@@ -44,7 +44,7 @@ func DownloadFileHandler(c *gin.Context) {
 		}
 	}
 
-	log.Printf("Sent %s with size of %d", file.Name, file.Size)
+	serverlog.Infof("Sent %s with size of %d", file.Name, file.Size)
 	c.FileAttachment(file.Path, file.Name)
 }
 
@@ -52,31 +52,31 @@ func DeleteFileHandler(c *gin.Context) {
 	fileIdStr := c.Param("id")
 	fileId, err := uuid.Parse(fileIdStr)
 	if err != nil {
-		log.Printf("Invalid UUID format:%v", err)
+		serverlog.Warnf("Invalid UUID format:%v", err)
 		c.String(http.StatusBadRequest, "Invalid UUID format")
 		return
 	}
 	file, found := services.GetFileByID(fileId)
 	if !found {
-		log.Printf("File not found")
+		serverlog.Warnf("File not found")
 		c.String(http.StatusNotFound, "File not found")
 		return
 	}
 	err = os.Remove(file.Path)
 	if err != nil {
-		log.Printf("Error deleting file:%v", err)
+		serverlog.Errorf("Error deleting file:%v", err)
 		c.String(http.StatusInternalServerError, "Error deleting file")
 		return
 	}
 
 	err = storage.DeleteFile(fileId)
 	if err != nil {
-		log.Printf("Error deleting file from db:%v", err)
+		serverlog.Errorf("Error deleting file from db:%v", err)
 		c.String(http.StatusInternalServerError, "Error deleting file from db")
 		return
 	}
 
-	log.Printf("Deleted file with ID:%s ", fileIdStr)
+	serverlog.Infof("Deleted file with ID:%s ", fileIdStr)
 	c.String(http.StatusOK, fmt.Sprintf("File '%s' deleted successfully", file.Name))
 }
 
@@ -84,14 +84,14 @@ func HasPinHandler(c *gin.Context) {
 	fileIdStr := c.Param("id")
 	fileId, err := uuid.Parse(fileIdStr)
 	if err != nil {
-		log.Printf("Invalid UUID format :%v", err)
+		serverlog.Warnf("Invalid UUID format :%v", err)
 		c.String(http.StatusBadRequest, "Invalid UUID format")
 		return
 	}
 	file, found := services.GetFileByID(fileId)
 
 	if !found {
-		log.Printf("File  is not present")
+		serverlog.Warnf("File  is not present")
 		c.String(http.StatusNotFound, "File is not present")
 		return
 	}

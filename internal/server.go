@@ -5,7 +5,6 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
-	"log"
 	"net"
 	"net/http"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/Mo7sen007/LocalDrop/internal/middleware"
 	"github.com/Mo7sen007/LocalDrop/internal/models"
 	"github.com/Mo7sen007/LocalDrop/internal/paths"
+	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
 	"github.com/Mo7sen007/LocalDrop/internal/storage"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -35,7 +35,7 @@ func NewServer(port *int, authEnabled *bool, loggingLevel *string) *Server {
 	var server Server
 	serverConfig, err := config.GetConfig()
 	if err != nil {
-		log.Fatal("Faild to get server config")
+		serverlog.Errorf("Faild to get server config")
 		return nil
 	}
 	if port != nil {
@@ -50,13 +50,13 @@ func NewServer(port *int, authEnabled *bool, loggingLevel *string) *Server {
 
 	err = serverConfig.Validate()
 	if err != nil {
-		log.Printf("Invalid parameters:%v", err)
+		serverlog.Errorf("Invalid parameters:%v", err)
 		return nil
 	}
 	server.config = &serverConfig
 	err = config.SaveConfig(&serverConfig)
 	if err != nil {
-		log.Printf("Couldn't save config to disk:%v", err)
+		serverlog.Errorf("Couldn't save config to disk:%v", err)
 		return nil
 	}
 	return &server
@@ -67,7 +67,7 @@ func NewServer(port *int, authEnabled *bool, loggingLevel *string) *Server {
 func generateSecretKey() []byte {
 	key := make([]byte, 32)
 	if _, err := rand.Read(key); err != nil {
-		log.Fatal("Failed to generate secret key:", err)
+		serverlog.Errorf("Failed to generate secret key: %v", err)
 		return nil
 	}
 	return key
@@ -79,16 +79,16 @@ func getSecretKey() []byte {
 	}
 
 	if config.IsProduction() {
-		log.Fatal("SESSION_SECRET is required in production (set SESSION_SECRET, or LOCALDROP_ENV=prod/production)")
+		serverlog.Errorf("SESSION_SECRET is required in production (set SESSION_SECRET, or LOCALDROP_ENV=prod/production)")
 		return nil
 	}
 
 	if config.GetBoolDefault("SESSION_SECRET_RANDOM", false) {
-		log.Printf("warning: SESSION_SECRET_RANDOM=true; using a random per-start session secret")
+		serverlog.Warnf("SESSION_SECRET_RANDOM=true; using a random per-start session secret")
 		return generateSecretKey()
 	}
 
-	log.Printf("warning: SESSION_SECRET not set; using an insecure default dev session secret")
+	serverlog.Warnf("SESSION_SECRET not set; using an insecure default dev session secret")
 	return []byte("localdrop-dev-session-secret-change-me")
 }
 
@@ -119,7 +119,8 @@ func (s *Server) setupRouter() error {
 
 	staticSubFS, err := fs.Sub(staticFS, "static")
 	if err != nil {
-		log.Fatal("Failed to create static sub-filesystem:", err)
+		serverlog.Errorf("Failed to create static sub-filesystem: %v", err)
+		return err
 	}
 	s.router.StaticFS("/static", http.FS(staticSubFS))
 	s.router.MaxMultipartMemory = s.config.Storage.MaxFileSize
@@ -151,7 +152,7 @@ func (s *Server) setupRouter() error {
 	s.router.GET("/listOfFiles", func(c *gin.Context) {
 		rootFolder, err := storage.GetRoot()
 		if err != nil {
-			log.Println("Failed to load files:", err)
+			serverlog.Errorf("Failed to load files: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -236,7 +237,7 @@ func (s *Server) setupMDNS() error {
 		return fmt.Errorf("failed to start mDNS server: %w", err)
 	}
 
-	log.Printf("mDNS server started: %s:%d (IP: %s)", "localdrop.local.", s.config.App.Port, localIP)
+	serverlog.Infof("mDNS server started: %s:%d (IP: %s)", "localdrop.local.", s.config.App.Port, localIP)
 	return nil
 }
 

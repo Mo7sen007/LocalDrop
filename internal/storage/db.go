@@ -4,10 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/Mo7sen007/LocalDrop/internal/paths"
+	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -31,7 +31,7 @@ func Init(dbPath string) error {
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	log.Println("SQLite database initialized:", dbPath)
+	serverlog.Infof("SQLite database initialized: %s", dbPath)
 
 	if err := createTables(); err != nil {
 		return fmt.Errorf("failed to set up tables: %w", err)
