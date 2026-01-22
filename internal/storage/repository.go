@@ -7,43 +7,56 @@ import (
 	"github.com/google/uuid"
 )
 
-// RootFolderID is the UUID of the root folder
 const RootFolderID = "00000000-0000-0000-0000-000000000000"
 
 // --- Folder Operations ---
 
 func CreateFolder(folder *models.Folder) error {
-
 	tx, err := DB.Begin()
 	if err != nil {
-		_ = tx.Rollback()
 		return err
 	}
+	defer func() { _ = tx.Rollback() }()
 
 	query := `
-        INSERT INTO folders (id, name,path , pin_code, created_at, size, parent_id)
+        INSERT INTO folders (id, name, path, pin_code, created_at, size, parent_id)
         VALUES (?, ?, ?, ?, ?, ?, ?)
     `
 
-	var parentID interface{}
+	parentID := RootFolderID
 	if folder.ParentID != nil {
 		parentID = folder.ParentID.String()
-	} else {
-		// If no parent specified, use root folder UUID
-		parentID = RootFolderID
 	}
 
-	_, err = DB.Exec(query, folder.ID.String(), folder.Name, folder.Path, folder.PinCode, folder.CreatedAt, folder.Size, parentID)
+	var pin interface{}
+	if folder.PinCode != nil {
+		pin = *folder.PinCode
+	} else {
+		pin = nil
+	}
+
+	if _, err := tx.Exec(
+		query,
+		folder.ID.String(),
+		folder.Name,
+		folder.Path,
+		pin,
+		folder.CreatedAt,
+		folder.Size,
+		parentID,
+	); err != nil {
+		return err
+	}
+
 	return tx.Commit()
 }
 
 func UpdateFolder(newFolder models.Folder, folderID uuid.UUID) error {
 	tx, err := DB.Begin()
-
 	if err != nil {
-		_ = tx.Rollback()
 		return err
 	}
+	defer func() { _ = tx.Rollback() }()
 
 	query := `
         UPDATE folders
@@ -51,11 +64,9 @@ func UpdateFolder(newFolder models.Folder, folderID uuid.UUID) error {
         WHERE id = ?
     `
 
-	var parentID interface{}
+	parentID := RootFolderID
 	if newFolder.ParentID != nil {
 		parentID = newFolder.ParentID.String()
-	} else {
-		parentID = RootFolderID
 	}
 
 	var pin interface{}
@@ -65,7 +76,7 @@ func UpdateFolder(newFolder models.Folder, folderID uuid.UUID) error {
 		pin = nil
 	}
 
-	_, err = DB.Exec(
+	if _, err := tx.Exec(
 		query,
 		newFolder.Name,
 		newFolder.Path,
@@ -74,9 +85,11 @@ func UpdateFolder(newFolder models.Folder, folderID uuid.UUID) error {
 		newFolder.Size,
 		parentID,
 		folderID.String(),
-	)
-	return tx.Commit()
+	); err != nil {
+		return err
+	}
 
+	return tx.Commit()
 }
 
 func GetFolderByNameAndParent(name string, parentID *uuid.UUID) (*models.Folder, error) {
@@ -89,7 +102,7 @@ func GetFolderByNameAndParent(name string, parentID *uuid.UUID) (*models.Folder,
 	args = append(args, name)
 
 	if parentID == nil {
-		// If parentID is nil, look in the root folder
+
 		query += `parent_id = ?`
 		args = append(args, RootFolderID)
 	} else {
@@ -158,7 +171,7 @@ func DeleteFolder(folderId uuid.UUID) error {
 		_ = tx.Rollback()
 		return err
 	}
-	_, err = DB.Exec("DELETE FROM folders WHERE id = ?", folderId.String())
+	_, err = tx.Exec("DELETE FROM folders WHERE id = ?", folderId.String())
 	return tx.Commit()
 }
 
@@ -223,7 +236,7 @@ func CreateFile(file *models.File) error {
 	if file.FolderID != nil {
 		folderID = file.FolderID.String()
 	} else {
-		// If no folder specified, use root folder UUID
+
 		folderID = RootFolderID
 	}
 
@@ -416,10 +429,8 @@ func GetRoot() (*models.Folder, error) {
 		return nil, err
 	}
 
-	// Parse root folder UUID
 	rootID := uuid.MustParse(RootFolderID)
 
-	// Get root folder path from database
 	var rootPath string
 	err = DB.QueryRow(`SELECT path FROM folders WHERE id = ?`, RootFolderID).Scan(&rootPath)
 	if err != nil {
@@ -427,7 +438,7 @@ func GetRoot() (*models.Folder, error) {
 	}
 
 	return &models.Folder{
-		ID:        rootID, // Root folder UUID
+		ID:        rootID,
 		Name:      "Root",
 		Path:      rootPath,
 		SubFolder: subFolders,

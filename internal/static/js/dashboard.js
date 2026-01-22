@@ -1,6 +1,18 @@
 let currentFolderID = "00000000-0000-0000-0000-000000000000"; // Root folder ID
 let folderHistory = []; // Stack to track folder navigation
 let currentUploadDescriptor = null;
+let fileInput = null;
+let folderInput = null;
+let fileNameInput = null;
+let dropzone = null;
+let dropText = null;
+let pinModal = null;
+let pinInput = null;
+let closePinModalButton = null;
+let cancelPinButton = null;
+let submitPinButton = null;
+let pendingPinAction = null;
+let folderPinCache = new Map();
 
 document.addEventListener('DOMContentLoaded', () => {
     loadFiles();
@@ -14,13 +26,19 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('refreshBtn')?.addEventListener('click', () => loadFiles(currentFolderID));
 
     // File Input Listeners
-    const fileInput = document.getElementById('fileEl');
-    const folderInput = document.getElementById('folderEl');
-    const fileNameInput = document.getElementById('fileName');
-    const dropzone = document.getElementById('fileDropzone');
-    const dropText = document.getElementById('fileDropText');
+    fileInput = document.getElementById('fileEl');
+    folderInput = document.getElementById('folderEl');
+    fileNameInput = document.getElementById('fileName');
+    dropzone = document.getElementById('fileDropzone');
+    dropText = document.getElementById('fileDropText');
     const pickFilesBtn = document.getElementById('pickFilesBtn');
     const pickFolderBtn = document.getElementById('pickFolderBtn');
+
+    pinModal = document.getElementById('pinModal');
+    pinInput = document.getElementById('pinInput');
+    closePinModalButton = document.getElementById('closePinModal');
+    cancelPinButton = document.getElementById('cancelPin');
+    submitPinButton = document.getElementById('submitPin');
 
     pickFilesBtn?.addEventListener('click', () => fileInput?.click());
     pickFolderBtn?.addEventListener('click', () => folderInput?.click());
@@ -83,6 +101,36 @@ document.addEventListener('DOMContentLoaded', () => {
             setDropzoneStatus(dropText, dropzone, currentUploadDescriptor);
         });
     }
+
+    if (closePinModalButton) {
+        closePinModalButton.addEventListener('click', hidePinModal);
+    }
+    if (cancelPinButton) {
+        cancelPinButton.addEventListener('click', hidePinModal);
+    }
+    if (submitPinButton) {
+        submitPinButton.addEventListener('click', handlePinSubmit);
+    }
+    if (pinModal) {
+        pinModal.addEventListener('click', (e) => {
+            if (e.target === pinModal) {
+                hidePinModal();
+            }
+        });
+    }
+    if (pinInput) {
+        pinInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handlePinSubmit();
+            }
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && pinModal?.classList.contains('show')) {
+            hidePinModal();
+        }
+    });
 });
 
 function updateFileInputDisplay(input, type) {
@@ -181,7 +229,7 @@ async function traverseEntry(entry, prefix) {
     return [];
 }
 
-async function loadFiles(folderId = null) {
+async function loadFiles(folderId = null, pin = '') {
     const table = document.getElementById('tableOfContent');
     const loading = document.getElementById('loading');
     const emptyState = document.getElementById('emptyState');
@@ -198,10 +246,14 @@ async function loadFiles(folderId = null) {
     if (table) table.innerHTML = '';
     if (emptyState) emptyState.style.display = 'none';
 
+    if (!pin && folderId && folderPinCache.has(folderId)) {
+        pin = folderPinCache.get(folderId);
+    }
+
     try {
         // Determine which endpoint to use
         const isRoot = folderId === "00000000-0000-0000-0000-000000000000";
-        const endpoint = isRoot ? '/rootfilesandfolders' : `/folder/content/${folderId}`;
+            const endpoint = isRoot ? '/rootfilesandfolders' : `/folder/content/${folderId}${pin ? `?pin=${encodeURIComponent(pin)}` : ''}`;
         
         const response = await fetch(endpoint);
         if (!response.ok) throw new Error('Failed to fetch files');
@@ -277,7 +329,7 @@ async function loadFiles(folderId = null) {
                             <span class="name-text" title="${fullName}">${displayName}</span>
                         </div>
                     </td>
-                    <td>-</td>
+                        <td>${formatBytes(folder.size)}</td>
                     <td>Folder</td>
                     <td>${new Date(folder.created_at).toLocaleDateString()}</td>
                     <td>
@@ -289,7 +341,7 @@ async function loadFiles(folderId = null) {
                 row.onclick = (e) => {
                     // Only navigate if not clicking on action buttons
                     if (!e.target.closest('.btn-link') && !e.target.closest('button')) {
-                        navigateToFolder(folder.id, folder.name);
+                            handleFolderNavigation(folder.id, folder.name);
                     }
                 };
                 tbody.appendChild(row);
@@ -319,7 +371,7 @@ async function loadFiles(folderId = null) {
                     <td>${file.extension || 'file'}</td>
                     <td>${new Date(file.created_at).toLocaleDateString()}</td>
                     <td>
-                        <a href="/download/${file.id}" class="btn-link primary">Download</a>
+                        <button class="btn-link primary download-btn" data-file-id="${file.id}">Download</button>
                         <button onclick="deleteFile('${file.id}', '${safeNameForJs}')" class="btn-link delete">Delete</button>
                     </td>
                 `;
@@ -339,6 +391,17 @@ async function loadFiles(folderId = null) {
                     showToast('Link copied to clipboard', 'success');
                 } catch (error) {
                     showToast('Failed to copy link', 'error');
+                }
+            });
+        });
+
+        table.querySelectorAll('.download-btn').forEach((btn) => {
+            btn.addEventListener('click', async (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                const fileId = btn.getAttribute('data-file-id');
+                if (fileId) {
+                    await handleFileDownload(fileId);
                 }
             });
         });
@@ -365,7 +428,7 @@ function renderBackButton(table) {
     table.appendChild(tbody);
 }
 
-function navigateToFolder(folderId, folderName) {
+function navigateToFolder(folderId, folderName, pin = '') {
     // Add current folder to history before navigating
     folderHistory.push({
         id: currentFolderID,
@@ -373,7 +436,25 @@ function navigateToFolder(folderId, folderName) {
     });
     
     // Load the new folder
-    loadFiles(folderId);
+    loadFiles(folderId, pin);
+}
+
+async function handleFolderNavigation(folderId, folderName) {
+    try {
+        const response = await fetch(`/hasFolderPin/${folderId}`);
+        if (!response.ok) {
+            throw new Error('Failed to check folder PIN');
+        }
+        const data = await response.json();
+        if (data.hasPIN) {
+            pendingPinAction = { type: 'folder', id: folderId, name: folderName };
+            showPinModal();
+        } else {
+            navigateToFolder(folderId, folderName);
+        }
+    } catch (error) {
+        showToast('Failed to open folder', 'error');
+    }
 }
 
 function navigateBack() {
@@ -422,10 +503,7 @@ function analyzeFileInput(fileList){
 async function handleUpload(e) {
     e.preventDefault();
     
-    const fileInput = document.getElementById('fileEl');
-    const folderInput = document.getElementById('folderEl');
     const pinInput = document.getElementById('pinCode');
-    const fileNameInput = document.getElementById('fileName');
     const submitBtn = document.getElementById('submitButton');
 
     // Determine which input has files
@@ -447,7 +525,7 @@ async function handleUpload(e) {
     formData.append('folderId', currentFolderID);
     formData.append('pinCode', pinInput.value || '');
     formData.append('type', descriptor.type);
-    if (descriptor.type === 'file' && fileNameInput?.value) {
+    if ((descriptor.type === 'file' || descriptor.type === 'folder') && fileNameInput?.value) {
         formData.append('fileName', fileNameInput.value.trim());
     }
 
@@ -590,4 +668,64 @@ function escapeHtml(value) {
 
 function buildDownloadLink(id) {
     return `${window.location.origin}/download/${id}`;
+}
+
+async function handleFileDownload(fileId) {
+    try {
+        const response = await fetch(`/hasPin/${fileId}`);
+        if (!response.ok) {
+            throw new Error('Failed to check PIN');
+        }
+        const data = await response.json();
+        if (data.hasPIN) {
+                pendingPinAction = { type: 'file', id: fileId };
+            showPinModal();
+        } else {
+            downloadFile(fileId, '');
+        }
+    } catch (error) {
+        showToast('Failed to start download', 'error');
+    }
+}
+
+function downloadFile(fileId, pin = '') {
+    const url = `/download/${fileId}${pin ? `?pin=${encodeURIComponent(pin)}` : ''}`;
+    const link = document.createElement('a');
+    link.href = url;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    hidePinModal();
+}
+
+function showPinModal() {
+    if (!pinModal || !pinInput) return;
+    pinModal.classList.add('show');
+    pinInput.focus();
+    document.body.style.overflow = 'hidden';
+}
+
+function hidePinModal() {
+    if (!pinModal || !pinInput) return;
+    pinModal.classList.remove('show');
+    pinInput.value = '';
+        pendingPinAction = null;
+    document.body.style.overflow = '';
+}
+
+function handlePinSubmit() {
+    if (!pinInput) return;
+    const pin = pinInput.value.trim();
+    if (!pin) {
+        showToast('Please enter a PIN', 'error');
+        pinInput.focus();
+        return;
+    }
+        if (pendingPinAction?.type === 'file') {
+            downloadFile(pendingPinAction.id, pin);
+        } else if (pendingPinAction?.type === 'folder') {
+            folderPinCache.set(pendingPinAction.id, pin);
+            navigateToFolder(pendingPinAction.id, pendingPinAction.name || '', pin);
+        }
 }

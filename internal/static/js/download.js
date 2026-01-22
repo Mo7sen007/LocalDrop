@@ -129,15 +129,23 @@ function updateTable(items) {
         
         // Name cell
         const nameCell = document.createElement('td');
-        nameCell.className = 'inline-flex items-center gap-2';
+        nameCell.className = 'name-cell';
+
+        const nameStack = document.createElement('div');
+        nameStack.className = 'name-stack';
 
         const iconEl = document.createElement('i');
         iconEl.className = item.type === 'folder' ? 'fa-solid fa-folder' : 'fa-regular fa-file';
         iconEl.setAttribute('aria-hidden', 'true');
-        nameCell.appendChild(iconEl);
 
-        nameCell.appendChild(document.createTextNode(item.name || 'Unknown'));
-        nameCell.title = item.name || 'Unknown'; // Tooltip for long names
+        const nameText = document.createElement('span');
+        nameText.className = 'name-text';
+        nameText.textContent = item.name || 'Unknown';
+        nameText.title = item.name || 'Unknown';
+
+        nameStack.appendChild(iconEl);
+        nameStack.appendChild(nameText);
+        nameCell.appendChild(nameStack);
         row.appendChild(nameCell);
         
         // Download cell

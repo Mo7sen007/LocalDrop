@@ -86,7 +86,7 @@ func UploadHandler(c *gin.Context) {
 		}
 		form, _ := c.MultipartForm()
 		pathsList := form.Value["paths"]
-		if err := services.SaveFolder(files, pathsList, folderID, pinCode); err != nil {
+		if err := services.SaveFolder(files, pathsList, folderID, pinCode, displayName); err != nil {
 			c.String(http.StatusInternalServerError, fmt.Sprintf("Failed to upload folder: %v", err))
 			return
 		}

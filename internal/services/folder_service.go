@@ -47,7 +47,7 @@ func GetFolderContentByID(folderID uuid.UUID) ([]models.File, []models.Folder, e
 // - parentFolderID: UUID of the parent folder where this structure will be created
 // - pinCode: Optional PIN code for file protection
 // Returns error if folder creation, file save, or database operations fail
-func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderID *uuid.UUID, pinCode string) error {
+func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderID *uuid.UUID, pinCode string, displayName string) error {
 	// Determine the base path for saving files
 	var basePath string
 
@@ -72,6 +72,8 @@ func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderI
 	// Track the current parent ID as we traverse the folder structure
 	currentParentID := parentFolderID
 
+	rootNameOverride := strings.TrimSpace(displayName)
+
 	// Iterate through each file and its corresponding path
 
 	for i, fileHeader := range files {
@@ -84,6 +86,14 @@ func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderI
 
 		// Split the path into components (e.g., "folder/sub/file.txt" -> ["folder", "sub", "file.txt"])
 		parts := strings.Split(filepath.ToSlash(relPath), "/")
+		if rootNameOverride != "" {
+			if len(parts) > 1 {
+				parts[0] = rootNameOverride
+			} else if len(parts) == 1 {
+				parts = []string{rootNameOverride, parts[0]}
+			}
+			relPath = filepath.ToSlash(filepath.Join(parts...))
+		}
 		currentParentID = parentFolderID
 
 		// If there are folders in the path, create/find them in the database
@@ -119,13 +129,17 @@ func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderI
 					}
 
 					// Create folder record in database
+					var folderPin *string
+					if pinCode != "" {
+						folderPin = &pinCode
+					}
 					newFolder := models.Folder{
 						ID:        newFolderID,
 						Name:      folderName,
 						Path:      folderPath,
 						ParentID:  currentParentID,
 						CreatedAt: time.Now(),
-						PinCode:   nil, // Folders inherit access control
+						PinCode:   folderPin,
 					}
 					if err := storage.CreateFolder(&newFolder); err != nil {
 						serverlog.Errorf("Failed to create folder record %s: %v", folderName, err)

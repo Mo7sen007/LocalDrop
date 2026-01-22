@@ -164,6 +164,7 @@ func (s *Server) setupRouter() error {
 	s.router.GET("/download/:id", handlers.DownloadFileHandler)
 	s.router.GET("/download-folder/:id", handlers.DownloadFolderHandler)
 	s.router.GET("/hasPin/:id", handlers.HasPinHandler)
+	s.router.GET("/hasFolderPin/:id", handlers.HasFolderPinHandler)
 
 	if s.config.Auth.Enabled {
 		authGroup := s.router.Group("/", middleware.AuthMiddleware())

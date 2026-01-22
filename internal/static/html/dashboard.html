@@ -138,7 +138,7 @@
                                 <div class="form-group space-y-2">
                                     <label for="fileName" class="text-sm font-semibold">File Name</label>
                                     <input type="text" name="fileName" id="fileName" placeholder="Enter file name (optional)" class="retro-input">
-                                    <small class="form-help text-xs text-slate-600">Applies to single-file uploads only</small>
+                                    <small class="form-help text-xs text-slate-600">Applies to single file or folder name (top-level)</small>
                                 </div>
 
                                 <div class="form-group space-y-2">
@@ -206,6 +206,24 @@
                 <div class="modal-actions flex flex-wrap gap-3 justify-end">
                     <button id="cancelDelete" class="btn-secondary retro-btn secondary">Cancel</button>
                     <button id="confirmDelete" class="btn-danger retro-btn danger">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pin Modal -->
+    <div id="pinModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header flex items-center justify-between px-6 py-4 border-b-2 border-slate-900 bg-slate-100">
+                <h3 class="font-display text-sm">Enter PIN</h3>
+                <button class="modal-close text-xl" id="closePinModal">&times;</button>
+            </div>
+            <div class="modal-body p-6 space-y-4">
+                <p>This file is protected. Please enter the PIN to download:</p>
+                <input type="password" id="pinInput" placeholder="Enter PIN" maxlength="10" class="retro-input">
+                <div class="modal-actions flex flex-wrap gap-3 justify-end">
+                    <button id="cancelPin" class="btn-secondary retro-btn secondary">Cancel</button>
+                    <button id="submitPin" class="btn-primary retro-btn primary">Download</button>
                 </div>
             </div>
         </div>
