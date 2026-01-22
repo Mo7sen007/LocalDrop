@@ -46,6 +46,13 @@
             .copy-btn:hover { @apply -translate-x-0.5 -translate-y-0.5; }
             .copy-btn:active { @apply translate-x-0.5 translate-y-0.5 shadow-[1px_1px_0_0_#0f172a]; }
 
+            .file-dropzone { @apply relative flex flex-col items-center justify-center gap-3 border-2 border-dashed border-slate-900 rounded-xl bg-white px-4 py-8 shadow-[4px_4px_0_0_#0f172a] transition; }
+            .file-dropzone.dragover { @apply bg-emerald-50 border-emerald-600; }
+            .file-dropzone.has-file { @apply bg-emerald-50 border-emerald-600; }
+            .file-input-native { @apply absolute w-px h-px opacity-0 pointer-events-none; }
+            .dropzone-actions { @apply flex flex-wrap items-center justify-center gap-3; }
+            .dropzone-hint { @apply text-xs text-slate-500; }
+
             .loading { @apply flex flex-col items-center justify-center py-10 text-slate-600; }
             .loading-spinner { @apply h-10 w-10 rounded-full border-4 border-slate-200 border-t-slate-900 animate-spin mb-3; }
             .empty-state { @apply text-center py-10 text-slate-600; }
@@ -110,34 +117,37 @@
                     <form id="uploadForm" method="post" enctype="multipart/form-data" action="/upload" class="p-6 space-y-5">
                         <div class="form-group space-y-2">
                             <label class="text-sm font-semibold">Select Content</label>
-                            <div class="file-input-group grid grid-cols-1 gap-4">
-                                <div class="file-input-wrapper">
-                                    <input type="file" name="file" id="fileEl" multiple>
-                                    <div class="file-input-display flex w-full min-w-0 items-center gap-2 border-2 border-dashed border-slate-900 rounded-lg px-3 py-3 bg-white shadow-[3px_3px_0_0_#0f172a] transition">
-                                        <i class="file-icon fa-regular fa-file" aria-hidden="true"></i>
-                                        <span class="file-text text-sm font-semibold min-w-0 truncate">Choose files...</span>
-                                    </div>
-                                </div>
-                                <div class="file-input-wrapper folder-wrapper">
-                                    <input type="file" name="folder" id="folderEl" webkitdirectory directory multiple>
-                                    <div class="file-input-display flex w-full min-w-0 items-center gap-2 border-2 border-dashed border-slate-900 rounded-lg px-3 py-3 bg-white shadow-[3px_3px_0_0_#0f172a] transition">
-                                        <i class="file-icon fa-solid fa-folder" aria-hidden="true"></i>
-                                        <span class="file-text text-sm font-semibold min-w-0 truncate">Choose folder...</span>
+                            <div class="file-dropzone" id="fileDropzone">
+                                <input type="file" name="file" id="fileEl" class="file-input-native" multiple>
+                                <input type="file" name="folder" id="folderEl" class="file-input-native" webkitdirectory directory multiple>
+                                <div class="dropzone-content flex flex-col items-center gap-2 text-center">
+                                    <div class="text-3xl"><i class="fa-regular fa-folder-open" aria-hidden="true"></i></div>
+                                    <p id="fileDropText" class="text-sm font-semibold">Drop files or folders here</p>
+                                    <p class="dropzone-hint">or choose using the buttons below</p>
+                                    <div class="dropzone-actions">
+                                        <button type="button" id="pickFilesBtn" class="retro-btn secondary">Choose Files</button>
+                                        <button type="button" id="pickFolderBtn" class="retro-btn secondary">Choose Folder</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="form-group space-y-2">
-                            <label for="fileName" class="text-sm font-semibold">File Name</label>
-                            <input type="text" name="fileName" id="fileName" placeholder="Enter file name (optional)" class="retro-input">
-                        </div>
+                        <details class="retro-card-sm px-4 py-3 bg-white">
+                            <summary class="cursor-pointer font-semibold text-sm">Advanced (optional)</summary>
+                            <div class="mt-4 space-y-4">
+                                <div class="form-group space-y-2">
+                                    <label for="fileName" class="text-sm font-semibold">File Name</label>
+                                    <input type="text" name="fileName" id="fileName" placeholder="Enter file name (optional)" class="retro-input">
+                                    <small class="form-help text-xs text-slate-600">Applies to single-file uploads only</small>
+                                </div>
 
-                        <div class="form-group space-y-2">
-                            <label for="pinCode" class="text-sm font-semibold">PIN Protection (Optional)</label>
-                            <input type="text" name="pinCode" id="pinCode" placeholder="Enter PIN to protect file" maxlength="10" class="retro-input">
-                            <small class="form-help text-xs text-slate-600">Leave empty for public access</small>
-                        </div>
+                                <div class="form-group space-y-2">
+                                    <label for="pinCode" class="text-sm font-semibold">PIN Protection (Optional)</label>
+                                    <input type="text" name="pinCode" id="pinCode" placeholder="Enter PIN to protect file" maxlength="10" class="retro-input">
+                                    <small class="form-help text-xs text-slate-600">Leave empty for public access</small>
+                                </div>
+                            </div>
+                        </details>
 
                         <button type="submit" id="submitButton" class="upload-btn retro-btn primary w-full justify-center">
                             <span class="btn-text">Upload File</span>

@@ -73,6 +73,7 @@ func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderI
 	currentParentID := parentFolderID
 
 	// Iterate through each file and its corresponding path
+
 	for i, fileHeader := range files {
 		// Determine the relative path for this file
 		relPath := fileHeader.Filename
@@ -140,6 +141,7 @@ func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderI
 		// Now save the file using the SaveFile function
 		// The file will be saved under the currentParentID (which is the deepest folder in the path)
 		finalPath := filepath.Join(basePath, relPath)
+
 		err := SaveUploadedFile(fileHeader, finalPath)
 		if err != nil {
 			return err

@@ -13,6 +13,13 @@ const RootFolderID = "00000000-0000-0000-0000-000000000000"
 // --- Folder Operations ---
 
 func CreateFolder(folder *models.Folder) error {
+
+	tx, err := DB.Begin()
+	if err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+
 	query := `
         INSERT INTO folders (id, name,path , pin_code, created_at, size, parent_id)
         VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -26,8 +33,50 @@ func CreateFolder(folder *models.Folder) error {
 		parentID = RootFolderID
 	}
 
-	_, err := DB.Exec(query, folder.ID.String(), folder.Name, folder.Path, folder.PinCode, folder.CreatedAt, folder.Size, parentID)
-	return err
+	_, err = DB.Exec(query, folder.ID.String(), folder.Name, folder.Path, folder.PinCode, folder.CreatedAt, folder.Size, parentID)
+	return tx.Commit()
+}
+
+func UpdateFolder(newFolder models.Folder, folderID uuid.UUID) error {
+	tx, err := DB.Begin()
+
+	if err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+
+	query := `
+        UPDATE folders
+        SET name = ?, path = ?, pin_code = ?, created_at = ?, size = ?, parent_id = ?
+        WHERE id = ?
+    `
+
+	var parentID interface{}
+	if newFolder.ParentID != nil {
+		parentID = newFolder.ParentID.String()
+	} else {
+		parentID = RootFolderID
+	}
+
+	var pin interface{}
+	if newFolder.PinCode != nil {
+		pin = *newFolder.PinCode
+	} else {
+		pin = nil
+	}
+
+	_, err = DB.Exec(
+		query,
+		newFolder.Name,
+		newFolder.Path,
+		pin,
+		newFolder.CreatedAt,
+		newFolder.Size,
+		parentID,
+		folderID.String(),
+	)
+	return tx.Commit()
+
 }
 
 func GetFolderByNameAndParent(name string, parentID *uuid.UUID) (*models.Folder, error) {
@@ -101,9 +150,16 @@ func GetFolder(folderId uuid.UUID) (*models.Folder, error) {
 }
 
 func DeleteFolder(folderId uuid.UUID) error {
-	// Because of ON DELETE CASCADE in schema, this deletes all sub-content automatically
-	_, err := DB.Exec("DELETE FROM folders WHERE id = ?", folderId.String())
-	return err
+	// this deletes all sub-content automatically!!
+
+	tx, err := DB.Begin()
+
+	if err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	_, err = DB.Exec("DELETE FROM folders WHERE id = ?", folderId.String())
+	return tx.Commit()
 }
 
 // Helper to get subfolders
@@ -178,7 +234,12 @@ func CreateFile(file *models.File) error {
 		pin = nil
 	}
 
-	_, err := DB.Exec(query,
+	tx, err := DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(query,
 		file.ID.String(),
 		folderID,
 		file.Name,
@@ -190,7 +251,18 @@ func CreateFile(file *models.File) error {
 		file.ModTime,
 		file.CreatedAt,
 	)
-	return err
+	if err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+
+	_, err = tx.Exec(`UPDATE folders SET size = size + ? WHERE id = ?`, file.Size, folderID)
+	if err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func GetFile(fileId uuid.UUID) (*models.File, error) {
@@ -220,8 +292,37 @@ func GetFile(fileId uuid.UUID) (*models.File, error) {
 }
 
 func DeleteFile(fileId uuid.UUID) error {
-	_, err := DB.Exec("DELETE FROM files WHERE id = ?", fileId.String())
-	return err
+	tx, err := DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	var folderIDStr sql.NullString
+	var size int64
+	err = tx.QueryRow(`SELECT folder_id, size FROM files WHERE id = ?`, fileId.String()).Scan(&folderIDStr, &size)
+	if err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+
+	folderID := RootFolderID
+	if folderIDStr.Valid {
+		folderID = folderIDStr.String
+	}
+
+	_, err = tx.Exec("DELETE FROM files WHERE id = ?", fileId.String())
+	if err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+
+	_, err = tx.Exec(`UPDATE folders SET size = size - ? WHERE id = ?`, size, folderID)
+	if err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func GetAllFiles() ([]models.File, error) {

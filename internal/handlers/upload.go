@@ -97,8 +97,11 @@ func UploadHandler(c *gin.Context) {
 }
 
 func uniqueDiskName(original string) string {
-	ext := filepath.Ext(original)
-	base := strings.TrimSuffix(original, ext)
+
+	sanetizedName := filepath.Base(original)
+
+	ext := filepath.Ext(sanetizedName)
+	base := strings.TrimSuffix(sanetizedName, ext)
 	if base == "" {
 		base = "upload"
 	}
