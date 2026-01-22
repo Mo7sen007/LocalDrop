@@ -1,5 +1,6 @@
 let currentFolderID = "00000000-0000-0000-0000-000000000000"; // Root folder ID
 let folderHistory = []; // Stack to track folder navigation
+let currentUploadDescriptor = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadFiles();
@@ -16,6 +17,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileInput = document.getElementById('fileEl');
     const folderInput = document.getElementById('folderEl');
     const fileNameInput = document.getElementById('fileName');
+    const dropzone = document.getElementById('fileDropzone');
+    const dropText = document.getElementById('fileDropText');
+    const pickFilesBtn = document.getElementById('pickFilesBtn');
+    const pickFolderBtn = document.getElementById('pickFolderBtn');
+
+    pickFilesBtn?.addEventListener('click', () => fileInput?.click());
+    pickFolderBtn?.addEventListener('click', () => folderInput?.click());
+
+    if (dropzone) {
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragover');
+        });
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('dragover');
+        });
+        dropzone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+
+            const entries = await extractDropEntries(e.dataTransfer);
+            if (!entries.length) {
+                showToast('No files detected in drop', 'error');
+                return;
+            }
+
+            currentUploadDescriptor = buildDescriptorFromEntries(entries);
+            setDropzoneStatus(dropText, dropzone, currentUploadDescriptor);
+
+            if (fileInput) fileInput.value = '';
+            if (folderInput) folderInput.value = '';
+        });
+    }
 
     if (fileInput) {
         fileInput.addEventListener('change', (e) => {
@@ -24,14 +58,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.target.files.length === 1 && fileNameInput) {
                 fileNameInput.value = e.target.files[0].name;
             }
-            // Disable folder input when files are selected
-            if (e.target.files.length > 0 && folderInput) {
-                folderInput.disabled = true;
-                folderInput.closest('.file-input-wrapper')?.classList.add('disabled');
-            } else if (folderInput) {
-                folderInput.disabled = false;
-                folderInput.closest('.file-input-wrapper')?.classList.remove('disabled');
-            }
+            if (folderInput) folderInput.value = '';
+
+            currentUploadDescriptor = analyzeFileInput(e.target.files);
+            setDropzoneStatus(dropText, dropzone, currentUploadDescriptor);
         });
     }
 
@@ -47,34 +77,108 @@ document.addEventListener('DOMContentLoaded', () => {
                     fileNameInput.value = folderName;
                 }
             }
-            // Disable file input when folder is selected
-            if (e.target.files.length > 0 && fileInput) {
-                fileInput.disabled = true;
-                fileInput.closest('.file-input-wrapper')?.classList.add('disabled');
-            } else if (fileInput) {
-                fileInput.disabled = false;
-                fileInput.closest('.file-input-wrapper')?.classList.remove('disabled');
-            }
+            if (fileInput) fileInput.value = '';
+
+            currentUploadDescriptor = analyzeFileInput(e.target.files);
+            setDropzoneStatus(dropText, dropzone, currentUploadDescriptor);
         });
     }
 });
 
 function updateFileInputDisplay(input, type) {
-    const wrapper = input.closest('.file-input-wrapper');
-    const textSpan = wrapper.querySelector('.file-text');
-    if (!textSpan) return;
+    if (!input?.files) return;
+}
 
-    if (input.files && input.files.length > 0) {
-        if (input.files.length === 1) {
-            textSpan.textContent = input.files[0].name;
-        } else {
-            textSpan.textContent = `${input.files.length} ${type}s selected`;
-        }
-        wrapper.classList.add('has-file');
-    } else {
-        textSpan.textContent = type === 'file' ? 'Choose files...' : 'Choose folder...';
-        wrapper.classList.remove('has-file');
+function setDropzoneStatus(dropText, dropzone, descriptor) {
+    if (!dropText || !dropzone) return;
+    if (!descriptor || !descriptor.entries?.length) {
+        dropText.textContent = 'Drop files or folders here';
+        dropzone.classList.remove('has-file');
+        return;
     }
+    dropzone.classList.add('has-file');
+    if (descriptor.type === 'folder') {
+        dropText.textContent = `${descriptor.totalFiles} items from folder`; 
+    } else if (descriptor.totalFiles === 1) {
+        dropText.textContent = descriptor.entries[0].file.name;
+    } else {
+        dropText.textContent = `${descriptor.totalFiles} files selected`;
+    }
+}
+
+function buildDescriptorFromEntries(entries) {
+    const totalSize = entries.reduce((size, entry) => size + entry.size, 0);
+    const hasRelativePath = entries.some((entry) => entry.relativePath && entry.relativePath.includes('/'));
+    let type = 'files';
+    if (entries.length === 1 && !hasRelativePath) {
+        type = 'file';
+    } else if (hasRelativePath) {
+        type = 'folder';
+    }
+
+    return {
+        type,
+        totalFiles: entries.length,
+        totalSize,
+        entries
+    };
+}
+
+async function extractDropEntries(dataTransfer) {
+    if (!dataTransfer) return [];
+    const items = dataTransfer.items ? Array.from(dataTransfer.items) : [];
+    if (!items.length) {
+        return Array.from(dataTransfer.files || []).map((file) => ({
+            file,
+            size: file.size,
+            relativePath: file.webkitRelativePath || null
+        }));
+    }
+
+    const entryPromises = items
+        .filter((item) => item.kind === 'file')
+        .map((item) => item.webkitGetAsEntry ? item.webkitGetAsEntry() : null)
+        .filter(Boolean)
+        .map((entry) => traverseEntry(entry, ''));
+
+    const nested = await Promise.all(entryPromises);
+    return nested.flat();
+}
+
+function readEntries(reader) {
+    return new Promise((resolve) => reader.readEntries(resolve));
+}
+
+async function readAllEntries(reader) {
+    let entries = [];
+    while (true) {
+        const batch = await readEntries(reader);
+        if (!batch.length) break;
+        entries = entries.concat(batch);
+    }
+    return entries;
+}
+
+async function traverseEntry(entry, prefix) {
+    if (entry.isFile) {
+        const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
+        return [{
+            file,
+            size: file.size,
+            relativePath: prefix + file.name
+        }];
+    }
+    if (entry.isDirectory) {
+        const reader = entry.createReader();
+        const children = await readAllEntries(reader);
+        const allFiles = [];
+        for (const child of children) {
+            const childFiles = await traverseEntry(child, `${prefix}${entry.name}/`);
+            allFiles.push(...childFiles);
+        }
+        return allFiles;
+    }
+    return [];
 }
 
 async function loadFiles(folderId = null) {
@@ -296,7 +400,7 @@ function analyzeFileInput(fileList){
     }else if(hasRelativePath){
         type = "folder";
     }else{
-        type = "folders";
+        type = "files";
     }
 
     const entries = files.map(file=>({
@@ -325,17 +429,19 @@ async function handleUpload(e) {
     const submitBtn = document.getElementById('submitButton');
 
     // Determine which input has files
-    let filesToUpload = null;
-    if (fileInput.files && fileInput.files.length > 0) {
-        filesToUpload = fileInput.files;
-    } else if (folderInput.files && folderInput.files.length > 0) {
-        filesToUpload = folderInput.files;
-    } else {
+    let descriptor = currentUploadDescriptor;
+    if (!descriptor) {
+        if (fileInput.files && fileInput.files.length > 0) {
+            descriptor = analyzeFileInput(fileInput.files);
+        } else if (folderInput.files && folderInput.files.length > 0) {
+            descriptor = analyzeFileInput(folderInput.files);
+        }
+    }
+
+    if (!descriptor || !descriptor.entries?.length) {
         showToast('Please select files or a folder to upload', 'error');
         return;
     }
-
-    const descriptor = analyzeFileInput(filesToUpload);
 
     const formData = new FormData();
     formData.append('folderId', currentFolderID);
@@ -388,16 +494,12 @@ async function handleUpload(e) {
             folderInput.value = '';
             pinInput.value = '';
             if (fileNameInput) fileNameInput.value = '';
+            currentUploadDescriptor = null;
+            setDropzoneStatus(dropText, dropzone, null);
             
             // Re-enable both inputs
             fileInput.disabled = false;
             folderInput.disabled = false;
-            fileInput.closest('.file-input-wrapper')?.classList.remove('disabled');
-            folderInput.closest('.file-input-wrapper')?.classList.remove('disabled');
-            
-            // Reset input displays
-            updateFileInputDisplay(fileInput, 'file');
-            updateFileInputDisplay(folderInput, 'folder');
             
             loadFiles(currentFolderID); // Refresh current folder
         } else {

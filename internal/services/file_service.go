@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/Mo7sen007/LocalDrop/internal/config"
 	"github.com/Mo7sen007/LocalDrop/internal/models"
 	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
 	"github.com/Mo7sen007/LocalDrop/internal/storage"
-
 	"github.com/google/uuid"
 )
 
@@ -80,6 +80,15 @@ func SaveFile(filename string, diskPath string, pinCode string, folderID *uuid.U
 		ModTime:   time.Now(),                      // Last modification time
 		CreatedAt: time.Now(),                      // Creation timestamp
 	}
+
+	if cfg, cfgErr := config.GetConfig(); cfgErr == nil {
+		if cfg.Storage.MaxFileSize > 0 && info.Size() > cfg.Storage.MaxFileSize {
+			os.Remove(diskPath)
+			return fmt.Errorf("file size %d exceeds allowed maximum %d", info.Size(), cfg.Storage.MaxFileSize)
+		}
+	} else {
+		serverlog.Warnf("could not load config for size check: %v", cfgErr)
+	}
 	if err := storage.CreateFile(&uploadedFile); err != nil {
 		// If database insert fails, clean up the physical file
 		os.Remove(diskPath)
@@ -92,7 +101,6 @@ func SaveFile(filename string, diskPath string, pinCode string, folderID *uuid.U
 		filename, uploadedFile.ID.String(), uploadedFile.Size)
 
 	return nil
-
 }
 
 func SaveUploadedFile(file *multipart.FileHeader, path string) error {
@@ -112,10 +120,27 @@ func SaveUploadedFile(file *multipart.FileHeader, path string) error {
 	tempName := tempFile.Name()
 	defer tempFile.Close()
 
-	_, err = io.Copy(tempFile, src)
+	maxSize := int64(0)
+	if cfg, cfgErr := config.GetConfig(); cfgErr == nil {
+		maxSize = cfg.Storage.MaxFileSize
+	} else {
+		serverlog.Warnf("could not load config for size limit: %v", cfgErr)
+	}
+
+	var written int64
+	if maxSize > 0 {
+		limited := io.LimitReader(src, maxSize+1)
+		written, err = io.Copy(tempFile, limited)
+	} else {
+		written, err = io.Copy(tempFile, src)
+	}
 	if err != nil {
 		os.Remove(tempName)
 		return err
+	}
+	if maxSize > 0 && written > maxSize {
+		os.Remove(tempName)
+		return fmt.Errorf("uploaded file too large: %d bytes (max %d)", written, maxSize)
 	}
 	tempFile.Close()
 
