@@ -123,10 +123,27 @@ func GetRootFilesAndFoldersHandler(c *gin.Context) {
 
 func GetFolderHandler(c *gin.Context) {
 	folderIDStr := c.Param("id")
+	pinCode := c.Query("pin")
 	folderId, err := uuid.Parse(folderIDStr)
 	if err != nil {
 		c.String(http.StatusBadRequest, "Invalid UUID format")
 		return
+	}
+	folderMeta, err := storage.GetFolder(folderId)
+	if err != nil {
+		c.String(http.StatusNotFound, "Folder not found")
+		return
+	}
+	if folderMeta.PinCode != nil && *folderMeta.PinCode != "" {
+		if pinCode == "" {
+			c.String(http.StatusUnauthorized, "PIN code required")
+			return
+		}
+		verified := services.CheckPasswordHash(pinCode, *folderMeta.PinCode)
+		if !verified {
+			c.String(http.StatusUnauthorized, "Incorrect PIN code")
+			return
+		}
 	}
 	files, subFolders, err := services.GetFolderContentByID(folderId)
 	if err != nil {
@@ -136,5 +153,26 @@ func GetFolderHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"files":   files,
 		"folders": subFolders,
+	})
+}
+
+func HasFolderPinHandler(c *gin.Context) {
+	folderIDStr := c.Param("id")
+	folderId, err := uuid.Parse(folderIDStr)
+	if err != nil {
+		serverlog.Warnf("Invalid UUID format :%v", err)
+		c.String(http.StatusBadRequest, "Invalid UUID format")
+		return
+	}
+	folder, err := storage.GetFolder(folderId)
+	if err != nil {
+		serverlog.Warnf("Folder is not present")
+		c.String(http.StatusNotFound, "Folder is not present")
+		return
+	}
+
+	hasPin := folder.PinCode != nil && *folder.PinCode != ""
+	c.JSON(http.StatusOK, gin.H{
+		"hasPIN": hasPin,
 	})
 }

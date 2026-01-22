@@ -32,6 +32,10 @@
             .retro-table td { @apply border-b border-slate-200 px-4 py-3; }
             .retro-table tr:hover td { @apply bg-slate-50; }
 
+            .name-cell { @apply min-w-0; }
+            .name-stack { @apply flex items-center gap-2 min-w-0; }
+            .name-text { @apply truncate font-semibold; }
+
             .download-cell { @apply inline-flex items-center gap-2 border-2 border-slate-900 rounded-md px-2 py-1 text-sm bg-sky-200 shadow-[2px_2px_0_0_#0f172a] transition-transform duration-200 ease-out; }
             .download-cell:hover { @apply -translate-x-0.5 -translate-y-0.5; }
             .download-cell:active { @apply translate-x-0.5 translate-y-0.5 shadow-[1px_1px_0_0_#0f172a]; }
