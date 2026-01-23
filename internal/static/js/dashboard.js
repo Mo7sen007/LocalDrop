@@ -522,11 +522,13 @@ async function handleUpload(e) {
     }
 
     const formData = new FormData();
-    formData.append('folderId', currentFolderID);
-    formData.append('pinCode', pinInput.value || '');
-    formData.append('type', descriptor.type);
+    if (currentFolderID && currentFolderID !== "00000000-0000-0000-0000-000000000000") {
+        formData.append('parent_id', currentFolderID);
+    }
+    formData.append('pin_code', pinInput.value || '');
+    formData.append('contentType', descriptor.type);
     if ((descriptor.type === 'file' || descriptor.type === 'folder') && fileNameInput?.value) {
-        formData.append('fileName', fileNameInput.value.trim());
+        formData.append('display_name', fileNameInput.value.trim());
     }
 
     for (const entry of descriptor.entries) {
