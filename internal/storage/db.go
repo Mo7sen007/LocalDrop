@@ -8,7 +8,7 @@ import (
 
 	"github.com/Mo7sen007/LocalDrop/internal/paths"
 	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 var DB *sql.DB
@@ -22,7 +22,7 @@ func Init() error {
 	dbPath += "localdrop.db"
 
 	dsn := dbPath + "?_foreign_keys=on"
-	DB, err = sql.Open("sqlite3", dsn)
+	DB, err = sql.Open("sqlite", dsn)
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}

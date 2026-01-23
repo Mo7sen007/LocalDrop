@@ -12,28 +12,41 @@ project_name: localdrop
 
 before:
   hooks:
-    # You may remove this if you don't use go modules.
     - go mod tidy
 
 builds:
-  - binary: localdrop
+  - id: localdrop_unix
+    binary: localdrop
     goos:
       - linux
-      - windows
       - darwin
     goarch:
       - amd64
       - arm64
+
+  - id: localdrop_linux_32
+    binary: localdrop
+    goos:
+      - linux
+    goarch:
       - 386
       - arm
     goarm:
       - 7
 
+  - id: localdrop_windows
+    binary: localdrop
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - 386
+      - arm64
+
 archives:
   - formats: [tar.gz]
     name_template: >-
       localdrop_{{ .Os }}_{{ .Arch }}{{- if .Arm }}v{{ .Arm }}{{ end }}
-    # use zip for windows archives
     format_overrides:
       - goos: windows
         formats: [zip]
