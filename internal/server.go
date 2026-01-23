@@ -217,7 +217,7 @@ func (s *Server) setupMDNS() error {
 	}
 
 	if localIP == nil {
-		localIP = net.ParseIP("127.0.0.1") // Fallback to localhost
+		localIP = net.ParseIP("127.0.0.1")
 	}
 
 	service, err := mdns.NewMDNSService(
@@ -243,12 +243,12 @@ func (s *Server) setupMDNS() error {
 }
 
 func (s *Server) Init() error {
+	var err error
 	if err := paths.Initialize(); err != nil {
 		return fmt.Errorf("failed to initialize paths: %w", err)
 	}
 
-	// Initialize storage/database
-	if err := storage.Init("localdrop.db"); err != nil {
+	if err := storage.Init(); err != nil {
 		return fmt.Errorf("failed to initialize storage: %w", err)
 	}
 
@@ -261,7 +261,10 @@ func (s *Server) Init() error {
 		return fmt.Errorf("failed to setup mDNS: %w", err)
 	}
 
-	s.root, _ = storage.GetRoot()
+	s.root, err = storage.GetRoot()
+	if err != nil {
+		return fmt.Errorf("failed to get root folder: %w", err)
+	}
 
 	return nil
 }

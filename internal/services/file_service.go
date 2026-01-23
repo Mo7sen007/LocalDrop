@@ -56,18 +56,16 @@ func getMaxUploadSize() int64 {
 }
 
 // SaveUploadedFile writes the multipart upload to disk (atomic via temp file + rename).
-// Kept for compatibility, but consider calling SaveUploadedFileAndCreateRecord for the full flow.
 func SaveUploadedFile(file *multipart.FileHeader, dstPath string) error {
 	return saveMultipartToPath(file, dstPath, getMaxUploadSize())
 }
 
 // SaveFile persists metadata for a file that already exists on disk.
-// Kept for compatibility; consider renaming callers to SaveFileMetadata.
 func SaveFile(filename string, diskPath string, pinCode string, folderID *uuid.UUID) error {
 	return saveFileMetadata(filename, diskPath, pinCode, folderID, getMaxUploadSize())
 }
 
-// SaveUploadedFileAndCreateRecord is the "one call" upload flow:
+// SaveUploadedFileAndCreateRecord:
 // 1) write to disk, 2) persist DB record, 3) cleanup disk file if DB step fails.
 func SaveUploadedFileAndCreateRecord(fileHeader *multipart.FileHeader, diskPath string, pinCode string, folderID *uuid.UUID, displayName string) error {
 	maxSize := getMaxUploadSize()
