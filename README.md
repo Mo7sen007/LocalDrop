@@ -6,24 +6,25 @@ Built with Go and Gin, LocalDrop provides a simple web interface for uploading a
 
 ---
 
-##  Features
+## Features
 
--  **Easy File Sharing** - Upload files from any device on your local network
--  **Simple Downloads** - Access files through a clean web interface
--  **PIN Protection** - Optional PIN codes for secure file downloads
--  **Admin Dashboard** - Manage files and control access (optional authentication)
--  **Lightweight** - Fast, efficient, and minimal resource usage
--  **Cross-Platform** - Works on Windows, macOS, and Linux
--  **Any Device** - Access from browsers on phones, tablets, or computers
--  **No Internet Required** - Works completely offline over LAN or hotspot
+- **Easy File Sharing** - Upload files from any device on your local network
+- **Simple Downloads** - Access files through a clean web interface
+- **Folder Upload and Navigation** - Upload folders and browse them in the web UI
+- **PIN Protection** - Optional PIN codes for secure file downloads
+- **Admin Dashboard** - Manage files and control access (optional authentication)
+- **Lightweight** - Fast, efficient, and minimal resource usage
+- **Cross-Platform** - Works on Windows, macOS, and Linux
+- **Any Device** - Access from browsers on phones, tablets, or computers
+- **No Internet Required** - Works completely offline over LAN or hotspot
 
 ---
 
-##  Installation
+## Installation
 
 ### Option 1: Install via Go (Recommended)
 
-Make sure you have [Go 1.18+](https://golang.org/doc/install) installed.
+Make sure you have [Go 1.24+](https://golang.org/doc/install) installed.
 
 ```bash
 go install github.com/Mo7sen007/LocalDrop@latest
@@ -45,13 +46,33 @@ go build -o localdrop
 go install
 ```
 
-### Option 3: Download Pre-built Binaries
+### Option 3: Install via Script (Linux/macOS)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Mo7sen007/LocalDrop/main/install.sh | bash
+```
+
+### Option 4: Install via Script (Windows PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/Mo7sen007/LocalDrop/main/install.ps1 | iex
+```
+
+### Option 5: Download Pre-built Binaries
 
 Download the latest release for your platform from the [Releases](https://github.com/Mo7sen007/LocalDrop/releases) page.
 
 ---
 
-##  Quick Start
+## Quick Start
+
+### Initialize Storage and Admin
+
+```bash
+localdrop init
+```
+
+This creates the required folders and configuration, and prompts you to create the first admin account.
 
 ### Start the Server
 
@@ -102,7 +123,7 @@ localdrop stop
 
 ---
 
-##  Usage
+## Usage
 
 ### Basic Commands
 
@@ -128,7 +149,7 @@ localdrop --help
 
 ### Admin Management
 
-When authentication is enabled, you'll need to create admin accounts:
+When authentication is enabled, you'll need at least one admin account. The first account can be created using `localdrop init`.
 
 ```bash
 # Add a new admin user
@@ -137,6 +158,13 @@ localdrop addadmin
 # List all admin users
 localdrop listadmin
 ```
+
+### Folder Uploads and Navigation
+
+Use the web dashboard to upload folders and browse nested directories:
+
+- Upload a folder from the dashboard upload page
+- Navigate folders in the web UI to view or download files
 
 ### Configuration
 
@@ -150,17 +178,19 @@ Directory structure:
 ```
 localdrop/
 ├── logs/
-│   └── localdrop.log          # Server logs
-├── storage/
-│   ├── files/                 # Uploaded files
-│   ├── listOfFiles.json       # File metadata
-│   └── adminList.json         # Admin credentials
-└── localdrop.pid              # Process ID (when running)
+│   └── localdrop.log                 # Server logs
+├── internal/
+│   └── storage/
+│       ├── files/                    # Uploaded files
+│       │   └── localdrop.db          # SQLite database
+│       ├── adminList.json            # Admin records (legacy)
+│       └── config.yaml               # App config
+└── localdrop.pid                     # Process ID (when running)
 ```
 
 ---
 
-##  Security
+## Security
 
 - **PIN Protection**: Set optional PIN codes when uploading files to restrict downloads
 - **Admin Authentication**: Enable `--auth` flag to require login for uploads and file management
@@ -169,7 +199,7 @@ localdrop/
 
 ---
 
-##  Use Cases
+## Use Cases
 
 - **Office/Home Network**: Share files quickly between computers
 - **Mobile Hotspot**: Create a hotspot and share files with nearby devices
@@ -179,7 +209,7 @@ localdrop/
 
 ---
 
-##  Development
+## Development
 
 ### Project Structure
 
@@ -229,7 +259,7 @@ go test ./...
 
 ---
 
-##  Contributing
+## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
@@ -241,13 +271,13 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
-##  License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-##  Troubleshooting
+## Troubleshooting
 
 ### Server won't start
 ```bash
@@ -273,7 +303,7 @@ localdrop start --port 3000
 
 ---
 
-## 📧 Contact
+## Contact
 
 Amir Boujneh - [@Mo7sen007](https://github.com/Mo7sen007)
 
@@ -281,6 +311,6 @@ Project Link: [https://github.com/Mo7sen007/LocalDrop](https://github.com/Mo7sen
 
 ---
 
-## ⭐ Show Your Support
+## Show Your Support
 
-If you find this project useful, please consider giving it a star on GitHub!
+If you find this project useful, please consider giving it a star on GitHub.
