@@ -6,7 +6,13 @@ $Port = 8080
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 New-Item -ItemType Directory -Force -Path $ConfigDir | Out-Null
 
-$Arch = if ($env:PROCESSOR_ARCHITECTURE -eq "AMD64") { "amd64" } else { "arm64" }
+$Arch = if ($env:PROCESSOR_ARCHITECTURE -eq "AMD64") {
+  "amd64"
+} elseif ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
+  "arm64"
+} else {
+  "386"
+}
 $Url = "https://github.com/Mo7sen007/LocalDrop/releases/latest/download/localdrop_windows_$Arch.zip"
 
 Invoke-WebRequest $Url -OutFile "$InstallDir\localdrop.zip"

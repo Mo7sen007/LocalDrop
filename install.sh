@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 APP_NAME="localdrop"
 INSTALL_DIR="/usr/local/bin"
@@ -11,8 +11,16 @@ echo "Installing $APP_NAME..."
 # Detect OS + ARCH
 OS=$(uname | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
-[ "$ARCH" = "x86_64" ] && ARCH="amd64"
-[ "$ARCH" = "aarch64" ] && ARCH="arm64"
+
+case "$ARCH" in
+  x86_64) ARCH="amd64" ;;
+  amd64) ARCH="amd64" ;;
+  aarch64) ARCH="arm64" ;;
+  arm64) ARCH="arm64" ;;
+  armv7l) ARCH="armv7" ;;
+  armv6l) ARCH="armv6" ;;
+  i386|i686) ARCH="386" ;;
+esac
 
 BIN_URL="https://github.com/Mo7sen007/LocalDrop/releases/latest/download/localdrop_${OS}_${ARCH}.tar.gz"
 
