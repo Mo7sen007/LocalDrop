@@ -308,6 +308,7 @@ async function loadFiles(folderId = null, pin = '') {
                 const displayName = escapeHtml(truncateName(rawName));
                 const fullName = escapeHtml(rawName);
                 const safeNameForJs = rawName.replace(/'/g, "\\'");
+                const folderLink = `${window.location.origin}/download-folder/${folder.id}`;
                 row.innerHTML = `
                     <td class="name-cell">
                         <div class="name-stack">
@@ -319,6 +320,7 @@ async function loadFiles(folderId = null, pin = '') {
                     <td>Folder</td>
                     <td>${new Date(folder.created_at).toLocaleDateString()}</td>
                     <td>
+                        <button class="btn-link share-btn" data-url="${folderLink}" onclick="event.stopPropagation()">Share</button>
                         <a href="/download-folder/${folder.id}" class="btn-link primary" onclick="event.stopPropagation()">Download</a>
                         <button onclick="event.stopPropagation(); deleteFolder('${folder.id}', '${safeNameForJs}')" class="btn-link delete">Delete</button>
                     </td>
@@ -357,6 +359,7 @@ async function loadFiles(folderId = null, pin = '') {
                     <td>${file.extension || 'file'}</td>
                     <td>${new Date(file.created_at).toLocaleDateString()}</td>
                     <td>
+                        <button class="btn-link share-btn" data-url="${downloadLink}">Share</button>
                         <button class="btn-link primary download-btn" data-file-id="${file.id}">Download</button>
                         <button onclick="deleteFile('${file.id}', '${safeNameForJs}')" class="btn-link delete">Delete</button>
                     </td>
@@ -378,6 +381,15 @@ async function loadFiles(folderId = null, pin = '') {
                 } catch (error) {
                     showToast('Failed to copy link', 'error');
                 }
+            });
+        });
+
+        table.querySelectorAll('.share-btn').forEach((btn) => {
+            btn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const url = btn.getAttribute('data-url');
+                if (!url || !window.Share) return;
+                window.Share.show(url, document.title);
             });
         });
 
