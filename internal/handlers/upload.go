@@ -2,11 +2,11 @@ package handlers
 
 import (
 	"fmt"
-	"mime/multipart"
 	"net/http"
 	"path/filepath"
 	"strings"
 
+	"github.com/Mo7sen007/LocalDrop/internal/dto"
 	"github.com/Mo7sen007/LocalDrop/internal/paths"
 	"github.com/Mo7sen007/LocalDrop/internal/services"
 	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
@@ -15,31 +15,48 @@ import (
 	"github.com/google/uuid"
 )
 
-func parseUploadForm(c *gin.Context) (files []*multipart.FileHeader, pinCode string, folderID *uuid.UUID, contentType string, basePath string, displayName string, err error) {
+func parseUploadForm(c *gin.Context) (dto.UploadFileRequestBody, string, error) {
+	var requestBody dto.UploadFileRequestBody
+	var basePath string
 	form, err := c.MultipartForm()
 	if err != nil {
-		return nil, "", nil, "", "", "", fmt.Errorf("multipart form: %w", err)
+		return dto.UploadFileRequestBody{}, "", fmt.Errorf("multipart form: %w", err)
 	}
-	files = form.File["files"]
-	pinCode = c.PostForm("pinCode")
-	displayName = strings.TrimSpace(c.PostForm("fileName"))
 
-	folderIdStr := c.PostForm("folderId")
-	contentType = c.PostForm("type")
+	requestBody.FileHeaders = form.File["files"]
+	requestBody.PinCode = c.PostForm("pin_code")
+	if requestBody.PinCode == "" {
+		requestBody.PinCode = c.PostForm("pinCode")
+	}
 
-	if pinCode != "" {
-		pinCode, err = services.HashPassword(pinCode)
+	requestBody.DisplayName = strings.TrimSpace(c.PostForm("display_name"))
+	if requestBody.DisplayName == "" {
+		requestBody.DisplayName = strings.TrimSpace(c.PostForm("fileName"))
+	}
+
+	folderIdStr := c.PostForm("parent_id")
+	if folderIdStr == "" {
+		folderIdStr = c.PostForm("folderId")
+	}
+
+	requestBody.ContentType = c.PostForm("contentType")
+	if requestBody.ContentType == "" {
+		requestBody.ContentType = c.PostForm("type")
+	}
+
+	if requestBody.PinCode != "" {
+		requestBody.PinCode, err = services.HashPassword(requestBody.PinCode)
 		if err != nil {
-			return nil, "", nil, "", "", "", fmt.Errorf("error parsing pin code: %w", err)
+			return dto.UploadFileRequestBody{}, "", fmt.Errorf("error parsing pin code: %w", err)
 		}
 	}
 
 	if folderIdStr != "" {
 		parsed, err := uuid.Parse(folderIdStr)
 		if err != nil {
-			return nil, "", nil, "", "", "", fmt.Errorf("invalid folder id: %w", err)
+			return dto.UploadFileRequestBody{}, "", fmt.Errorf("invalid folder id: %w", err)
 		}
-		folderID = &parsed
+		requestBody.ParentFolderID = &parsed
 	}
 
 	basePath, err = paths.GetFilesPath()
@@ -47,52 +64,52 @@ func parseUploadForm(c *gin.Context) (files []*multipart.FileHeader, pinCode str
 		serverlog.Errorf("Could not get default path: %v", err)
 		basePath = ""
 	}
-	return files, pinCode, folderID, contentType, basePath, displayName, nil
+	return requestBody, basePath, nil
 }
 
 func UploadHandler(c *gin.Context) {
-	files, pinCode, folderID, contentType, basePath, displayName, err := parseUploadForm(c)
+	requestBody, basePath, err := parseUploadForm(c)
 	if err != nil {
 		serverlog.Warnf("upload parse error: %v", err)
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	switch contentType {
+	switch requestBody.ContentType {
 	case "file":
-		if len(files) == 0 {
+		if len(requestBody.FileHeaders) == 0 {
 			c.String(http.StatusBadRequest, "No file provided")
 			return
 		}
-		if err := handleSingleFile(files[0], pinCode, folderID, basePath, displayName); err != nil {
+		if err := handleSingleFile(requestBody, basePath); err != nil {
 			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
 		c.String(http.StatusOK, "File uploaded successfully!")
 	case "files":
-		if len(files) == 0 {
+		if len(requestBody.FileHeaders) == 0 {
 			c.String(http.StatusBadRequest, "No files provided")
 			return
 		}
-		if err := handleMultipleFiles(files, pinCode, folderID, basePath); err != nil {
+		if err := handleMultipleFiles(requestBody, basePath); err != nil {
 			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
-		c.String(http.StatusOK, fmt.Sprintf("%d files uploaded successfully!", len(files)))
+		c.String(http.StatusOK, fmt.Sprintf("%d files uploaded successfully!", len(requestBody.FileHeaders)))
 	case "folder":
-		if len(files) == 0 {
+		if len(requestBody.FileHeaders) == 0 {
 			c.String(http.StatusBadRequest, "No files provided")
 			return
 		}
 		form, _ := c.MultipartForm()
 		pathsList := form.Value["paths"]
-		if err := services.SaveFolder(files, pathsList, folderID, pinCode, displayName); err != nil {
+		if err := services.SaveFolder(requestBody.FileHeaders, pathsList, requestBody.ParentFolderID, requestBody.PinCode, requestBody.DisplayName); err != nil {
 			c.String(http.StatusInternalServerError, fmt.Sprintf("Failed to upload folder: %v", err))
 			return
 		}
-		c.String(http.StatusOK, fmt.Sprintf("Folder uploaded successfully with %d files!", len(files)))
+		c.String(http.StatusOK, fmt.Sprintf("Folder uploaded successfully with %d files!", len(requestBody.FileHeaders)))
 	default:
-		c.String(http.StatusBadRequest, "Invalid upload type: %s", contentType)
+		c.String(http.StatusBadRequest, "Invalid upload type: %s", requestBody.ContentType)
 	}
 }
 
@@ -108,12 +125,12 @@ func uniqueDiskName(original string) string {
 	return fmt.Sprintf("%s-%s%s", base, uuid.New().String(), ext)
 }
 
-func handleSingleFile(fh *multipart.FileHeader, pin string, folderID *uuid.UUID, basePath string, displayName string) error {
+func handleSingleFile(requestBody dto.UploadFileRequestBody, basePath string) error {
 	var targetDir string
 	var fileFolderID *uuid.UUID
 
-	if folderID != nil {
-		folder, err := storage.GetFolder(*folderID)
+	if requestBody.ParentFolderID != nil {
+		folder, err := storage.GetFolder(*requestBody.ParentFolderID)
 		if err != nil {
 			return fmt.Errorf("folder not found: %w", err)
 		}
@@ -127,29 +144,20 @@ func handleSingleFile(fh *multipart.FileHeader, pin string, folderID *uuid.UUID,
 		fileFolderID = nil
 	}
 
-	diskPath := filepath.Join(targetDir, uniqueDiskName(fh.Filename))
-	if err := services.SaveUploadedFile(fh, diskPath); err != nil {
-		return fmt.Errorf("save uploaded file: %w", err)
-	}
-	finalName := fh.Filename
-	if displayName != "" {
-		finalName = displayName
-		if filepath.Ext(finalName) == "" {
-			finalName = finalName + filepath.Ext(fh.Filename)
-		}
-	}
-	if err := services.SaveFile(finalName, diskPath, pin, fileFolderID); err != nil {
-		return fmt.Errorf("save file meta: %w", err)
+	fileHeader := requestBody.FileHeaders[0]
+	diskPath := filepath.Join(targetDir, uniqueDiskName(fileHeader.Filename))
+	if err := services.SaveUploadedFileAndCreateRecord(fileHeader, diskPath, requestBody.PinCode, fileFolderID, requestBody.DisplayName); err != nil {
+		return fmt.Errorf("save upload: %w", err)
 	}
 	return nil
 }
 
-func handleMultipleFiles(files []*multipart.FileHeader, pin string, folderID *uuid.UUID, basePath string) error {
+func handleMultipleFiles(requestBody dto.UploadFileRequestBody, basePath string) error {
 	var targetDir string
 	var fileFolderID *uuid.UUID
 
-	if folderID != nil {
-		f, err := storage.GetFolder(*folderID)
+	if requestBody.ParentFolderID != nil {
+		f, err := storage.GetFolder(*requestBody.ParentFolderID)
 		if err != nil {
 			return fmt.Errorf("folder not found: %w", err)
 		}
@@ -163,16 +171,11 @@ func handleMultipleFiles(files []*multipart.FileHeader, pin string, folderID *uu
 		fileFolderID = nil
 	}
 
-	for _, fh := range files {
+	for _, fh := range requestBody.FileHeaders {
 		diskPath := filepath.Join(targetDir, uniqueDiskName(fh.Filename))
 
-		if err := services.SaveUploadedFile(fh, diskPath); err != nil {
-			serverlog.Errorf("failed saving uploaded bytes for %s: %v", fh.Filename, err)
-			continue
-		}
-
-		if err := services.SaveFile(fh.Filename, diskPath, pin, fileFolderID); err != nil {
-			serverlog.Errorf("failed saving metadata for %s: %v", fh.Filename, err)
+		if err := services.SaveUploadedFileAndCreateRecord(fh, diskPath, requestBody.PinCode, fileFolderID, ""); err != nil {
+			serverlog.Errorf("failed saving upload for %s: %v", fh.Filename, err)
 			continue
 		}
 	}

@@ -4,32 +4,67 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LocalDrop - Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <link rel="stylesheet" href="/static/css/login.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style type="text/tailwindcss">
+    @layer base {
+      body { @apply font-sans bg-slate-50 text-slate-900; }
+    }
+    @layer components {
+      .font-display { font-family: "Press Start 2P", cursive; }
+      .font-body { font-family: "Inter", system-ui, sans-serif; }
+
+      .retro-card { @apply bg-white border-2 border-slate-900 rounded-xl overflow-hidden shadow-[6px_6px_0_0_#0f172a]; }
+      .retro-card-sm { @apply bg-white border-2 border-slate-900 rounded-lg overflow-hidden shadow-[4px_4px_0_0_#0f172a]; }
+      .retro-btn { @apply inline-flex items-center gap-2 border-2 border-slate-900 rounded-lg px-4 py-2 font-semibold bg-amber-300 shadow-[4px_4px_0_0_#0f172a] transition-transform duration-200 ease-out; }
+      .retro-btn:hover { @apply -translate-x-0.5 -translate-y-0.5; }
+      .retro-btn:active { @apply translate-x-0.5 translate-y-0.5 shadow-[2px_2px_0_0_#0f172a]; }
+      .retro-btn.primary { @apply bg-emerald-300; }
+      .retro-input { @apply w-full border-2 border-slate-900 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-4 focus:ring-slate-200 shadow-[3px_3px_0_0_#0f172a]; }
+      .retro-input:focus { @apply -translate-x-0.5 -translate-y-0.5 shadow-[4px_4px_0_0_#0f172a]; }
+
+      .error { @apply hidden text-sm border-2 border-slate-900 rounded-lg px-3 py-3 bg-rose-200 text-slate-900 shadow-[3px_3px_0_0_#0f172a]; }
+      .error.show { @apply block; }
+      .error.success { @apply bg-emerald-200; }
+      .login-button:disabled { @apply opacity-60 cursor-not-allowed; }
+    }
+  </style>
 </head>
-<body>
-  <div class="login-container">
-    <div class="logo"><i class="fa-solid fa-folder-open" aria-hidden="true"></i></div>
-    <h2>LocalDrop</h2>
-    
-    <form id="loginForm">
-      <div class="form-group">
-        <label for="username">Username</label>
-        <input type="text" id="username" name="username" placeholder="Enter your username" required>
+<body class="font-body bg-slate-50 text-slate-900">
+  <div class="min-h-screen flex items-center justify-center px-6 py-12">
+    <div class="retro-card w-full max-w-md">
+      <div class="flex items-center gap-3 px-6 py-5 border-b-2 border-slate-900 bg-slate-100">
+        <i class="fa-solid fa-folder-open text-2xl" aria-hidden="true"></i>
+        <div>
+          <h1 class="font-display text-sm">LocalDrop</h1>
+          <p class="text-xs text-slate-600">Sign in to continue</p>
+        </div>
       </div>
-      
-      <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" placeholder="Enter your password" required>
+
+      <form id="loginForm" class="p-6 space-y-5">
+        <div class="space-y-2">
+          <label for="username" class="text-sm font-semibold">Username</label>
+          <input type="text" id="username" name="username" placeholder="Enter your username" class="retro-input" required>
+        </div>
+
+        <div class="space-y-2">
+          <label for="password" class="text-sm font-semibold">Password</label>
+          <input type="password" id="password" name="password" placeholder="Enter your password" class="retro-input" required>
+        </div>
+
+        <button type="submit" class="login-button retro-btn primary w-full justify-center">
+          <span class="button-text">Sign In</span>
+          <span class="spinner" style="display: none;"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i></span>
+        </button>
+      </form>
+
+      <div class="px-6 pb-6">
+        <div id="error" class="error"></div>
       </div>
-      
-      <button type="submit" class="login-button">
-        <span class="button-text">Sign In</span>
-        <span class="spinner" style="display: none;"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i></span>
-      </button>
-    </form>
-    
-    <div id="error" class="error"></div>
+    </div>
   </div>
 
   <script src="/static/js/login.js"></script>
