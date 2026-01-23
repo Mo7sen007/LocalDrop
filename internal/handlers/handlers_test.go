@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Mo7sen007/LocalDrop/internal/middleware"
+	"github.com/Mo7sen007/LocalDrop/internal/testutil"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
