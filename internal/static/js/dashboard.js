@@ -10,6 +10,8 @@ let pinInput = null;
 let closePinModalButton = null;
 let cancelPinButton = null;
 let submitPinButton = null;
+let pinModalTitle = null;
+let pinModalDescription = null;
 let pendingPinAction = null;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -37,6 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
     closePinModalButton = document.getElementById('closePinModal');
     cancelPinButton = document.getElementById('cancelPin');
     submitPinButton = document.getElementById('submitPin');
+    pinModalTitle = document.getElementById('pinModalTitle');
+    pinModalDescription = document.getElementById('pinModalDescription');
 
     pickFilesBtn?.addEventListener('click', () => fileInput?.click());
     pickFolderBtn?.addEventListener('click', () => folderInput?.click());
@@ -321,7 +325,7 @@ async function loadFiles(folderId = null, pin = '') {
                     <td>${new Date(folder.created_at).toLocaleDateString()}</td>
                     <td>
                         <button class="btn-link share-btn" data-url="${folderLink}" onclick="event.stopPropagation()">Share</button>
-                        <a href="/download-folder/${folder.id}" class="btn-link primary" onclick="event.stopPropagation()">Download</a>
+                        <button class="btn-link primary folder-download-btn" data-folder-id="${folder.id}" onclick="event.stopPropagation()">Download</button>
                         <button onclick="event.stopPropagation(); deleteFolder('${folder.id}', '${safeNameForJs}')" class="btn-link delete">Delete</button>
                     </td>
                 `;
@@ -404,6 +408,17 @@ async function loadFiles(folderId = null, pin = '') {
             });
         });
 
+        table.querySelectorAll('.folder-download-btn').forEach((btn) => {
+            btn.addEventListener('click', async (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                const folderId = btn.getAttribute('data-folder-id');
+                if (folderId) {
+                    await handleFolderDownload(folderId);
+                }
+            });
+        });
+
     } catch (error) {
         console.error('Error loading files:', error);
         if (loading) loading.style.display = 'none';
@@ -438,8 +453,8 @@ async function handleFolderNavigation(folderId, folderName) {
                 return !!data.hasPIN;
             },
             onPinRequired: (payload) => {
-                pendingPinAction = payload;
-                showPinModal();
+                pendingPinAction = { ...payload, type: 'folder-open' };
+                showPinModal('folder-open');
             },
             loadFn: loadFiles
         });
@@ -663,13 +678,31 @@ async function handleFileDownload(fileId) {
         }
         const data = await response.json();
         if (data.hasPIN) {
-                pendingPinAction = { type: 'file', id: fileId };
-            showPinModal();
+            pendingPinAction = { type: 'file', id: fileId };
+            showPinModal('file');
         } else {
             downloadFile(fileId, '');
         }
     } catch (error) {
         showToast('Failed to start download', 'error');
+    }
+}
+
+async function handleFolderDownload(folderId) {
+    try {
+        const response = await fetch(`/hasFolderPin/${folderId}`);
+        if (!response.ok) {
+            throw new Error('Failed to check folder PIN');
+        }
+        const data = await response.json();
+        if (data.hasPIN) {
+            pendingPinAction = { type: 'folder-download', id: folderId };
+            showPinModal('folder-download');
+        } else {
+            downloadFolder(folderId, '');
+        }
+    } catch (error) {
+        showToast('Failed to start folder download', 'error');
     }
 }
 
@@ -684,8 +717,20 @@ function downloadFile(fileId, pin = '') {
     hidePinModal();
 }
 
-function showPinModal() {
+function downloadFolder(folderId, pin = '') {
+    const url = `/download-folder/${folderId}${pin ? `?pin=${encodeURIComponent(pin)}` : ''}`;
+    const link = document.createElement('a');
+    link.href = url;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    hidePinModal();
+}
+
+function showPinModal(actionType = 'file') {
     if (!pinModal || !pinInput) return;
+    updatePinModalCopy(actionType);
     pinModal.classList.add('show');
     pinInput.focus();
     document.body.style.overflow = 'hidden';
@@ -709,8 +754,32 @@ function handlePinSubmit() {
     }
     if (pendingPinAction?.type === 'file') {
         downloadFile(pendingPinAction.id, pin);
-    } else if (pendingPinAction?.type === 'folder') {
+    } else if (pendingPinAction?.type === 'folder-open') {
         folderNav.cacheFolderPin(pendingPinAction.id, pin);
         folderNav.navigateToFolder(pendingPinAction.id, pendingPinAction.name || '', pin, loadFiles);
+        hidePinModal();
+    } else if (pendingPinAction?.type === 'folder-download') {
+        downloadFolder(pendingPinAction.id, pin);
+    }
+}
+
+function updatePinModalCopy(actionType) {
+    const isFolderOpen = actionType === 'folder-open';
+    const isFolderDownload = actionType === 'folder-download';
+
+    if (pinModalTitle) {
+        pinModalTitle.textContent = 'Enter PIN';
+    }
+    if (pinModalDescription) {
+        if (isFolderOpen) {
+            pinModalDescription.textContent = 'This folder is protected. Please enter the PIN to open:';
+        } else if (isFolderDownload) {
+            pinModalDescription.textContent = 'This folder is protected. Please enter the PIN to download:';
+        } else {
+            pinModalDescription.textContent = 'This file is protected. Please enter the PIN to download:';
+        }
+    }
+    if (submitPinButton) {
+        submitPinButton.textContent = isFolderOpen ? 'Open' : 'Download';
     }
 }

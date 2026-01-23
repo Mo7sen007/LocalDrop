@@ -245,8 +245,8 @@ async function handleFolderNavigation(folderId, folderName) {
                 return !!data.hasPIN;
             },
             onPinRequired: (payload) => {
-                pendingPinAction = payload;
-                showModal('folder');
+                pendingPinAction = { ...payload, type: 'folder-open' };
+                showModal('folder-open');
             },
             loadFn: loadFiles
         });
@@ -282,18 +282,41 @@ function downloadFile(fileId, pin = '') {
 
 // Handle folder download
 function handleFolderDownload(folderId) {
-    try {
-        const url = `/download-folder/${folderId}`;
-        const link = document.createElement('a');
-        link.href = url;
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    } catch (error) {
-        console.error('Download error:', error);
-        showError('Failed to download folder');
+    if (!folderId) {
+        showError('Invalid folder ID');
+        return;
     }
+
+    fetch(`/hasFolderPin/${folderId}`)
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error('Failed to check folder PIN');
+            }
+            return response.json();
+        })
+        .then((data) => {
+            if (data.hasPIN) {
+                pendingPinAction = { type: 'folder-download', id: folderId };
+                showModal('folder-download');
+                return;
+            }
+            downloadFolder(folderId, '');
+        })
+        .catch((error) => {
+            console.error('Download error:', error);
+            showError('Failed to download folder');
+        });
+}
+
+function downloadFolder(folderId, pin = '') {
+    const url = `/download-folder/${folderId}${pin ? `?pin=${encodeURIComponent(pin)}` : ''}`;
+    const link = document.createElement('a');
+    link.href = url;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    hideModal();
 }
 
 // Handle PIN submission
@@ -308,10 +331,12 @@ function handlePinSubmit() {
 
     if (pendingPinAction?.type === 'file') {
         downloadFile(pendingPinAction.id, pin);
-    } else if (pendingPinAction?.type === 'folder') {
+    } else if (pendingPinAction?.type === 'folder-open') {
         folderNav.cacheFolderPin(pendingPinAction.id, pin);
         folderNav.navigateToFolder(pendingPinAction.id, pendingPinAction.name || '', pin, loadFiles);
         hideModal();
+    } else if (pendingPinAction?.type === 'folder-download') {
+        downloadFolder(pendingPinAction.id, pin);
     }
 }
 
@@ -324,17 +349,22 @@ function showModal(actionType = 'file') {
 }
 
 function updatePinModalCopy(actionType) {
-    const isFolder = actionType === 'folder';
+    const isFolderOpen = actionType === 'folder-open';
+    const isFolderDownload = actionType === 'folder-download';
     if (pinModalTitle) {
         pinModalTitle.textContent = 'Enter PIN';
     }
     if (pinModalDescription) {
-        pinModalDescription.textContent = isFolder
-            ? 'This folder is protected. Please enter the PIN to open:'
-            : 'This file is protected. Please enter the PIN to download:';
+        if (isFolderOpen) {
+            pinModalDescription.textContent = 'This folder is protected. Please enter the PIN to open:';
+        } else if (isFolderDownload) {
+            pinModalDescription.textContent = 'This folder is protected. Please enter the PIN to download:';
+        } else {
+            pinModalDescription.textContent = 'This file is protected. Please enter the PIN to download:';
+        }
     }
     if (submitPinButton) {
-        submitPinButton.textContent = isFolder ? 'Open' : 'Download';
+        submitPinButton.textContent = isFolderOpen ? 'Open' : 'Download';
     }
 }
 

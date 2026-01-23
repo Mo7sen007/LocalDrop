@@ -215,11 +215,11 @@
     <div id="pinModal" class="modal">
         <div class="modal-content">
             <div class="modal-header flex items-center justify-between px-6 py-4 border-b-2 border-slate-900 bg-slate-100">
-                <h3 class="font-display text-sm">Enter PIN</h3>
+                <h3 id="pinModalTitle" class="font-display text-sm">Enter PIN</h3>
                 <button class="modal-close text-xl" id="closePinModal">&times;</button>
             </div>
             <div class="modal-body p-6 space-y-4">
-                <p>This file is protected. Please enter the PIN to download:</p>
+                <p id="pinModalDescription">This item is protected. Please enter the PIN:</p>
                 <input type="password" id="pinInput" placeholder="Enter PIN" maxlength="10" class="retro-input">
                 <div class="modal-actions flex flex-wrap gap-3 justify-end">
                     <button id="cancelPin" class="btn-secondary retro-btn secondary">Cancel</button>
