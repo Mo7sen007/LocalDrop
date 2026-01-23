@@ -12,6 +12,8 @@ const pinInput = document.getElementById("pinInput");
 const closeModalButton = document.getElementById("closeModal");
 const cancelPinButton = document.getElementById("cancelPin");
 const submitPinButton = document.getElementById("submitPin");
+const pinModalTitle = document.getElementById("pinModalTitle");
+const pinModalDescription = document.getElementById("pinModalDescription");
 
 // Initialize the page
 function initializePage() {
@@ -219,7 +221,7 @@ async function handleFileDownload(fileId) {
         
         if (data.hasPIN) {
             pendingPinAction = { type: 'file', id: fileId };
-            showModal();
+            showModal('file');
         } else {
             // Direct download
             downloadFile(fileId, '');
@@ -244,7 +246,7 @@ async function handleFolderNavigation(folderId, folderName) {
             },
             onPinRequired: (payload) => {
                 pendingPinAction = payload;
-                showModal();
+                showModal('folder');
             },
             loadFn: loadFiles
         });
@@ -314,10 +316,26 @@ function handlePinSubmit() {
 }
 
 // Show PIN modal
-function showModal() {
+function showModal(actionType = 'file') {
+    updatePinModalCopy(actionType);
     pinModal.classList.add('show');
     pinInput.focus();
     document.body.style.overflow = 'hidden'; // Prevent background scrolling
+}
+
+function updatePinModalCopy(actionType) {
+    const isFolder = actionType === 'folder';
+    if (pinModalTitle) {
+        pinModalTitle.textContent = 'Enter PIN';
+    }
+    if (pinModalDescription) {
+        pinModalDescription.textContent = isFolder
+            ? 'This folder is protected. Please enter the PIN to open:'
+            : 'This file is protected. Please enter the PIN to download:';
+    }
+    if (submitPinButton) {
+        submitPinButton.textContent = isFolder ? 'Open' : 'Download';
+    }
 }
 
 // Hide PIN modal
