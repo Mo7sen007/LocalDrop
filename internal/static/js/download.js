@@ -127,6 +127,7 @@ function updateTable(data, isRoot) {
         row.className = 'folder-row';
         row.style.cursor = 'pointer';
 
+        const folderLink = `${window.location.origin}/download-folder/${folder.id}`;
         row.innerHTML = `
             <td class="name-cell">
                 <div class="name-stack">
@@ -137,11 +138,12 @@ function updateTable(data, isRoot) {
             <td><span class="file-size">${formatFileSize(folder.size)}</span></td>
             <td>Folder</td>
             <td>
-                <button class="download-cell" type="button">Download</button>
+                <button class="download-cell share-btn" data-url="${folderLink}" type="button">Share</button>
+                <button class="download-cell download-btn" type="button">Download</button>
             </td>
         `;
 
-        row.querySelector('.download-cell')?.addEventListener('click', (e) => {
+        row.querySelector('.download-btn')?.addEventListener('click', (e) => {
             e.stopPropagation();
             handleFolderDownload(folder.id);
         });
@@ -156,6 +158,7 @@ function updateTable(data, isRoot) {
 
     (data.files || []).forEach(file => {
         const row = document.createElement('tr');
+        const fileLink = `${window.location.origin}/download/${file.id}`;
         row.innerHTML = `
             <td class="name-cell">
                 <div class="name-stack">
@@ -166,14 +169,24 @@ function updateTable(data, isRoot) {
             <td><span class="file-size">${formatFileSize(file.size)}</span></td>
             <td>${file.extension || 'file'}</td>
             <td>
-                <button class="download-cell" type="button">Download</button>
+                <button class="download-cell share-btn" data-url="${fileLink}" type="button">Share</button>
+                <button class="download-cell download-btn" type="button">Download</button>
             </td>
         `;
-        row.querySelector('.download-cell')?.addEventListener('click', () => handleFileDownload(file.id));
+        row.querySelector('.download-btn')?.addEventListener('click', () => handleFileDownload(file.id));
         tbody.appendChild(row);
     });
 
     tableElement.appendChild(tbody);
+
+    tableElement.querySelectorAll('.share-btn').forEach((btn) => {
+        btn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const url = btn.getAttribute('data-url');
+            if (!url || !window.Share) return;
+            window.Share.show(url, document.title);
+        });
+    });
 }
 
 // Format file size
