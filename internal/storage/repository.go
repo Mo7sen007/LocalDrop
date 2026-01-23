@@ -2,6 +2,8 @@ package storage
 
 import (
 	"database/sql"
+	"fmt"
+	"time"
 
 	"github.com/Mo7sen007/LocalDrop/internal/models"
 	"github.com/google/uuid"
@@ -444,4 +446,127 @@ func GetRoot() (*models.Folder, error) {
 		SubFolder: subFolders,
 		Files:     files,
 	}, nil
+}
+
+// -----Admin op----
+
+func CreateAdmin(admin *models.Admin) error {
+	if admin == nil {
+		return fmt.Errorf("admin is nil")
+	}
+	if admin.Username == "" {
+		return fmt.Errorf("admin username is required")
+	}
+	if admin.ID == uuid.Nil {
+		admin.ID = uuid.New()
+	}
+	if admin.CreatedAt.IsZero() {
+		admin.CreatedAt = time.Now()
+	}
+
+	query := `INSERT INTO admins (id, user_name, password, created_at) VALUES (?, ?, ?, ?)`
+	ctx, err := DB.Begin()
+	if err != nil {
+		return fmt.Errorf("create admin: %w", err)
+	}
+	defer func() { _ = ctx.Rollback() }()
+
+	_, err = ctx.Exec(query, admin.ID.String(), admin.Username, admin.PasswordHash, admin.CreatedAt)
+	if err != nil {
+		return fmt.Errorf("create admin: %w", err)
+	}
+
+	return ctx.Commit()
+}
+
+func UpdateAdmin(admin *models.Admin) error {
+	if admin == nil {
+		return fmt.Errorf("admin is nil")
+	}
+	if admin.Username == "" {
+		return fmt.Errorf("admin username is required")
+	}
+
+	query := `UPDATE admins SET password = ? WHERE user_name = ?`
+	ctx, err := DB.Begin()
+	if err != nil {
+		return fmt.Errorf("update admin: %w", err)
+	}
+	defer func() { _ = ctx.Rollback() }()
+
+	res, err := ctx.Exec(query, admin.PasswordHash, admin.Username)
+	if err != nil {
+		return fmt.Errorf("update admin: %w", err)
+	}
+	affected, err := res.RowsAffected()
+	if err == nil && affected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return ctx.Commit()
+}
+
+func DeleteAdmin(username string) error {
+	if username == "" {
+		return fmt.Errorf("admin username is required")
+	}
+
+	query := `DELETE FROM admins WHERE user_name = ?`
+	ctx, err := DB.Begin()
+	if err != nil {
+		return fmt.Errorf("delete admin: %w", err)
+	}
+	defer func() { _ = ctx.Rollback() }()
+
+	res, err := ctx.Exec(query, username)
+	if err != nil {
+		return fmt.Errorf("delete admin: %w", err)
+	}
+	affected, err := res.RowsAffected()
+	if err == nil && affected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return ctx.Commit()
+}
+
+func GetAdminByUsername(username string) (*models.Admin, error) {
+	if username == "" {
+		return nil, fmt.Errorf("admin username is required")
+	}
+
+	var admin models.Admin
+	var idStr string
+
+	query := `SELECT id, user_name, password, created_at FROM admins WHERE user_name = ?`
+	if err := DB.QueryRow(query, username).Scan(&idStr, &admin.Username, &admin.PasswordHash, &admin.CreatedAt); err != nil {
+		return nil, err
+	}
+	if idStr != "" {
+		admin.ID = uuid.MustParse(idStr)
+	}
+
+	return &admin, nil
+}
+
+func GetAllAdmins() ([]models.Admin, error) {
+	rows, err := DB.Query(`SELECT id, user_name, password, created_at FROM admins ORDER BY created_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var admins []models.Admin
+	for rows.Next() {
+		var admin models.Admin
+		var idStr string
+		if err := rows.Scan(&idStr, &admin.Username, &admin.PasswordHash, &admin.CreatedAt); err != nil {
+			return nil, err
+		}
+		if idStr != "" {
+			admin.ID = uuid.MustParse(idStr)
+		}
+		admins = append(admins, admin)
+	}
+	return admins, nil
 }

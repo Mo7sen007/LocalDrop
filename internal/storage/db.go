@@ -13,8 +13,13 @@ import (
 
 var DB *sql.DB
 
-func Init(dbPath string) error {
+func Init() error {
 	var err error
+	dbPath, err := paths.GetFilesPath()
+	if err != nil {
+		return fmt.Errorf("failed to get db path: %w", err)
+	}
+	dbPath += "localdrop.db"
 
 	dsn := dbPath + "?_foreign_keys=on"
 	DB, err = sql.Open("sqlite3", dsn)
@@ -64,7 +69,13 @@ func createTables() error {
         mod_time DATETIME,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(folder_id) REFERENCES folders(id) ON DELETE CASCADE
-    );`
+    );
+	CREATE TABLE IF NOT EXISTS admins(
+		user_name TEXT PRIMARY KEY NOT NULL,
+		id TEXT NOT NULL,
+		password TEXT NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);`
 	_, err := DB.Exec(query)
 	if err != nil {
 		return err

@@ -1,5 +1,6 @@
 // Global variables
-let currentFileId = null;
+const folderNav = window.FolderNav;
+let pendingPinAction = null;
 
 // DOM elements
 const tableElement = document.getElementById("tableOfContent");
@@ -51,67 +52,40 @@ function setupEventListeners() {
 // Initialize table structure
 function initializeTable() {
     tableElement.innerHTML = "";
-    
-    const thead = document.createElement('thead');
-    const headerRow = document.createElement('tr');
-    
-    const headers = ['Name', 'Download', 'Size'];
-    headers.forEach(headerText => {
-        const th = document.createElement('th');
-        th.textContent = headerText;
-        headerRow.appendChild(th);
-    });
-    
-    thead.appendChild(headerRow);
-    tableElement.appendChild(thead);
-    
-    const tbody = document.createElement('tbody');
-    tableElement.appendChild(tbody);
 }
 
 // Load files from server
-async function loadFiles() {
+async function loadFiles(folderId = null, pin = '') {
     showLoading(true);
     hideEmptyState();
-    
-    try {
-        const response = await fetch("/listOfFiles");
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        let items = [];
 
-        if (data) {
-            // Handle new Root object structure
-            if (data.name === "Root" || data.files || data.folders) {
-                const files = data.files || [];
-                const folders = data.folders || [];
-                
-                // Add type marker
-                files.forEach(f => f.type = 'file');
-                folders.forEach(f => f.type = 'folder');
-                
-                items = [...folders, ...files];
-            } else if (Array.isArray(data)) {
-                items = data;
-                items.forEach(f => f.type = 'file');
-            } else {
-                items = Object.values(data);
-                items.forEach(f => f.type = 'file');
-            }
+    const targetId = folderId || folderNav.ROOT_ID;
+    folderNav.setCurrentFolderID(targetId);
+
+    if (!pin && targetId) {
+        const cached = folderNav.getCachedPin(targetId);
+        if (cached) pin = cached;
+    }
+
+    try {
+        const data = await folderNav.fetchFolderContents(targetId, pin);
+        if (pin) {
+            folderNav.cacheFolderPin(targetId, pin);
         }
-        
+
         showLoading(false);
-        
-        if (items.length === 0) {
-            showEmptyState();
+
+        const allItems = [...(data.folders || []), ...(data.files || [])];
+        const isRoot = targetId === folderNav.ROOT_ID;
+        if (allItems.length === 0) {
+            if (!isRoot) {
+                updateTable(data, isRoot);
+            } else {
+                showEmptyState();
+            }
         } else {
-            updateTable(items);
+            updateTable(data, isRoot);
         }
-        
     } catch (error) {
         console.error('Error loading files:', error);
         showLoading(false);
@@ -120,57 +94,86 @@ async function loadFiles() {
 }
 
 // Update table with file data
-function updateTable(items) {
-    const tbody = tableElement.querySelector('tbody');
-    tbody.innerHTML = '';
-    
-    items.forEach(item => {
+function updateTable(data, isRoot) {
+    tableElement.innerHTML = '';
+
+    const thead = document.createElement('thead');
+    thead.innerHTML = `
+        <tr>
+            <th>Name</th>
+            <th>Size</th>
+            <th>Type</th>
+            <th>Actions</th>
+        </tr>
+    `;
+    tableElement.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+
+    if (!isRoot && folderNav.getFolderHistory().length > 0) {
+        const backRow = document.createElement('tr');
+        backRow.className = 'folder-row back-row';
+        backRow.innerHTML = `
+            <td colspan="4" style="cursor: pointer; font-weight: bold;">
+                <i class="fa-solid fa-arrow-left" aria-hidden="true" style="margin-right: 0.5rem;"></i>Back to parent folder
+            </td>
+        `;
+        backRow.onclick = () => navigateBack();
+        tbody.appendChild(backRow);
+    }
+
+    (data.folders || []).forEach(folder => {
         const row = document.createElement('tr');
-        
-        // Name cell
-        const nameCell = document.createElement('td');
-        nameCell.className = 'name-cell';
+        row.className = 'folder-row';
+        row.style.cursor = 'pointer';
 
-        const nameStack = document.createElement('div');
-        nameStack.className = 'name-stack';
+        row.innerHTML = `
+            <td class="name-cell">
+                <div class="name-stack">
+                    <i class="fa-solid fa-folder" aria-hidden="true"></i>
+                    <span class="name-text" title="${folder.name || ''}">${folder.name || 'Folder'}</span>
+                </div>
+            </td>
+            <td><span class="file-size">${formatFileSize(folder.size)}</span></td>
+            <td>Folder</td>
+            <td>
+                <button class="download-cell" type="button">Download</button>
+            </td>
+        `;
 
-        const iconEl = document.createElement('i');
-        iconEl.className = item.type === 'folder' ? 'fa-solid fa-folder' : 'fa-regular fa-file';
-        iconEl.setAttribute('aria-hidden', 'true');
+        row.querySelector('.download-cell')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            handleFolderDownload(folder.id);
+        });
 
-        const nameText = document.createElement('span');
-        nameText.className = 'name-text';
-        nameText.textContent = item.name || 'Unknown';
-        nameText.title = item.name || 'Unknown';
-
-        nameStack.appendChild(iconEl);
-        nameStack.appendChild(nameText);
-        nameCell.appendChild(nameStack);
-        row.appendChild(nameCell);
-        
-        // Download cell
-        const downloadCell = document.createElement('td');
-        if (item.type === 'folder') {
-            downloadCell.textContent = 'Download Zip';
-            downloadCell.className = 'download-cell';
-            downloadCell.style.cursor = 'pointer';
-            downloadCell.addEventListener('click', () => handleFolderDownload(item.id));
-        } else {
-            downloadCell.textContent = 'Download';
-            downloadCell.className = 'download-cell';
-            downloadCell.style.cursor = 'pointer';
-            downloadCell.addEventListener('click', () => handleFileDownload(item.id));
-        }
-        row.appendChild(downloadCell);
-        
-        // Size cell
-        const sizeCell = document.createElement('td');
-        const formattedSize = formatFileSize(item.size);
-        sizeCell.innerHTML = `<span class="file-size">${formattedSize}</span>`;
-        row.appendChild(sizeCell);
-        
+        row.onclick = (e) => {
+            if (!e.target.closest('.download-cell')) {
+                handleFolderNavigation(folder.id, folder.name || '');
+            }
+        };
         tbody.appendChild(row);
     });
+
+    (data.files || []).forEach(file => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="name-cell">
+                <div class="name-stack">
+                    <i class="fa-regular fa-file" aria-hidden="true"></i>
+                    <span class="name-text" title="${file.name || ''}">${file.name || 'File'}</span>
+                </div>
+            </td>
+            <td><span class="file-size">${formatFileSize(file.size)}</span></td>
+            <td>${file.extension || 'file'}</td>
+            <td>
+                <button class="download-cell" type="button">Download</button>
+            </td>
+        `;
+        row.querySelector('.download-cell')?.addEventListener('click', () => handleFileDownload(file.id));
+        tbody.appendChild(row);
+    });
+
+    tableElement.appendChild(tbody);
 }
 
 // Format file size
@@ -202,8 +205,7 @@ async function handleFileDownload(fileId) {
         const data = await response.json();
         
         if (data.hasPIN) {
-            // Show PIN modal
-            currentFileId = fileId;
+            pendingPinAction = { type: 'file', id: fileId };
             showModal();
         } else {
             // Direct download
@@ -214,6 +216,32 @@ async function handleFileDownload(fileId) {
         console.error('Error checking file PIN:', error);
         showError('Failed to process download request');
     }
+}
+
+async function handleFolderNavigation(folderId, folderName) {
+    try {
+        await folderNav.handleFolderNavigation(folderId, folderName, {
+            checkPin: async (id) => {
+                const response = await fetch(`/hasFolderPin/${id}`);
+                if (!response.ok) {
+                    throw new Error('Failed to check folder PIN');
+                }
+                const data = await response.json();
+                return !!data.hasPIN;
+            },
+            onPinRequired: (payload) => {
+                pendingPinAction = payload;
+                showModal();
+            },
+            loadFn: loadFiles
+        });
+    } catch (error) {
+        showError('Failed to open folder');
+    }
+}
+
+function navigateBack() {
+    folderNav.navigateBack(loadFiles);
 }
 
 // Download file with optional PIN
@@ -262,11 +290,13 @@ function handlePinSubmit() {
         pinInput.focus();
         return;
     }
-    
-    if (currentFileId) {
-        downloadFile(currentFileId, pin);
-        pinInput.value = ''; // Clear PIN input
-        currentFileId = null;
+
+    if (pendingPinAction?.type === 'file') {
+        downloadFile(pendingPinAction.id, pin);
+    } else if (pendingPinAction?.type === 'folder') {
+        folderNav.cacheFolderPin(pendingPinAction.id, pin);
+        folderNav.navigateToFolder(pendingPinAction.id, pendingPinAction.name || '', pin, loadFiles);
+        hideModal();
     }
 }
 
@@ -281,7 +311,7 @@ function showModal() {
 function hideModal() {
     pinModal.classList.remove('show');
     pinInput.value = '';
-    currentFileId = null;
+    pendingPinAction = null;
     document.body.style.overflow = ''; // Restore scrolling
 }
 
@@ -290,8 +320,8 @@ async function handleRefresh() {
     refreshButton.disabled = true;
     const refreshIcon = refreshButton.querySelector('.refresh-icon');
     refreshIcon.style.animation = 'spin 1s linear infinite';
-    
-    await loadFiles();
+
+    await loadFiles(folderNav.getCurrentFolderID());
     
     setTimeout(() => {
         refreshButton.disabled = false;

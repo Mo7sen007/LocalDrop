@@ -1,5 +1,4 @@
-let currentFolderID = "00000000-0000-0000-0000-000000000000"; // Root folder ID
-let folderHistory = []; // Stack to track folder navigation
+const folderNav = window.FolderNav;
 let currentUploadDescriptor = null;
 let fileInput = null;
 let folderInput = null;
@@ -12,7 +11,6 @@ let closePinModalButton = null;
 let cancelPinButton = null;
 let submitPinButton = null;
 let pendingPinAction = null;
-let folderPinCache = new Map();
 
 document.addEventListener('DOMContentLoaded', () => {
     loadFiles();
@@ -23,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Refresh button
-    document.getElementById('refreshBtn')?.addEventListener('click', () => loadFiles(currentFolderID));
+    document.getElementById('refreshBtn')?.addEventListener('click', () => loadFiles(folderNav.getCurrentFolderID()));
 
     // File Input Listeners
     fileInput = document.getElementById('fileEl');
@@ -236,38 +234,26 @@ async function loadFiles(folderId = null, pin = '') {
 
     // If no folderId provided, use root
     if (!folderId) {
-        folderId = "00000000-0000-0000-0000-000000000000";
+        folderId = folderNav.ROOT_ID;
     }
 
     // Update current folder ID
-    currentFolderID = folderId;
+    folderNav.setCurrentFolderID(folderId);
 
     if (loading) loading.style.display = 'block';
     if (table) table.innerHTML = '';
     if (emptyState) emptyState.style.display = 'none';
 
-    if (!pin && folderId && folderPinCache.has(folderId)) {
-        pin = folderPinCache.get(folderId);
+    if (!pin && folderId) {
+        const cached = folderNav.getCachedPin(folderId);
+        if (cached) pin = cached;
     }
 
     try {
-        // Determine which endpoint to use
-        const isRoot = folderId === "00000000-0000-0000-0000-000000000000";
-            const endpoint = isRoot ? '/rootfilesandfolders' : `/folder/content/${folderId}${pin ? `?pin=${encodeURIComponent(pin)}` : ''}`;
-        
-        const response = await fetch(endpoint);
-        if (!response.ok) throw new Error('Failed to fetch files');
-
-        let data = await response.json();
-        
-        // Handle null response from empty DB
-        if (!data) data = { files: [], folders: [] };
-        // If data is an array (legacy), wrap it
-        if (Array.isArray(data)) data = { files: data, folders: [] };
-        // If data is a map (legacy), convert to array
-        if (data && !data.files && !Array.isArray(data)) {
-             if (!data.files) data.files = [];
-             if (!data.folders) data.folders = [];
+        const isRoot = folderId === folderNav.ROOT_ID;
+        const data = await folderNav.fetchFolderContents(folderId, pin);
+        if (pin) {
+            folderNav.cacheFolderPin(folderId, pin);
         }
 
         if (loading) loading.style.display = 'none';
@@ -300,7 +286,7 @@ async function loadFiles(folderId = null, pin = '') {
         const tbody = document.createElement('tbody');
         
         // Add back button if not at root
-        if (!isRoot && folderHistory.length > 0) {
+        if (!isRoot && folderNav.getFolderHistory().length > 0) {
             const backRow = document.createElement('tr');
             backRow.className = 'folder-row back-row';
             backRow.innerHTML = `
@@ -428,46 +414,30 @@ function renderBackButton(table) {
     table.appendChild(tbody);
 }
 
-function navigateToFolder(folderId, folderName, pin = '') {
-    // Add current folder to history before navigating
-    folderHistory.push({
-        id: currentFolderID,
-        name: folderName
-    });
-    
-    // Load the new folder
-    loadFiles(folderId, pin);
-}
-
 async function handleFolderNavigation(folderId, folderName) {
     try {
-        const response = await fetch(`/hasFolderPin/${folderId}`);
-        if (!response.ok) {
-            throw new Error('Failed to check folder PIN');
-        }
-        const data = await response.json();
-        if (data.hasPIN) {
-            pendingPinAction = { type: 'folder', id: folderId, name: folderName };
-            showPinModal();
-        } else {
-            navigateToFolder(folderId, folderName);
-        }
+        await folderNav.handleFolderNavigation(folderId, folderName, {
+            checkPin: async (id) => {
+                const response = await fetch(`/hasFolderPin/${id}`);
+                if (!response.ok) {
+                    throw new Error('Failed to check folder PIN');
+                }
+                const data = await response.json();
+                return !!data.hasPIN;
+            },
+            onPinRequired: (payload) => {
+                pendingPinAction = payload;
+                showPinModal();
+            },
+            loadFn: loadFiles
+        });
     } catch (error) {
         showToast('Failed to open folder', 'error');
     }
 }
 
 function navigateBack() {
-    if (folderHistory.length > 0) {
-        // Pop the last folder from history
-        const previousFolder = folderHistory.pop();
-        
-        // Load the previous folder
-        loadFiles(previousFolder.id);
-    } else {
-        // If no history, go to root
-        loadFiles("00000000-0000-0000-0000-000000000000");
-    }
+    folderNav.navigateBack(loadFiles);
 }
 
 
@@ -522,8 +492,9 @@ async function handleUpload(e) {
     }
 
     const formData = new FormData();
-    if (currentFolderID && currentFolderID !== "00000000-0000-0000-0000-000000000000") {
-        formData.append('parent_id', currentFolderID);
+    const currentId = folderNav.getCurrentFolderID();
+    if (currentId && currentId !== folderNav.ROOT_ID) {
+        formData.append('parent_id', currentId);
     }
     formData.append('pin_code', pinInput.value || '');
     formData.append('contentType', descriptor.type);
@@ -581,7 +552,7 @@ async function handleUpload(e) {
             fileInput.disabled = false;
             folderInput.disabled = false;
             
-            loadFiles(currentFolderID); // Refresh current folder
+            loadFiles(folderNav.getCurrentFolderID()); // Refresh current folder
         } else {
             const msg = await response.text();
             throw new Error(msg);
@@ -602,7 +573,7 @@ async function deleteFile(id, name) {
         const response = await fetch(`/delete/file/${id}`, { method: 'DELETE' });
         if (response.ok) {
             showToast('File deleted', 'success');
-            loadFiles(currentFolderID); // Reload current folder
+            loadFiles(folderNav.getCurrentFolderID()); // Reload current folder
         } else {
             throw new Error('Delete failed');
         }
@@ -618,7 +589,7 @@ async function deleteFolder(id, name) {
         const response = await fetch(`/delete/folder/${id}`, {method:'DELETE'});
         if (response.ok) {
             showToast('Folder deleted', 'success');
-            loadFiles(currentFolderID); // Reload current folder
+            loadFiles(folderNav.getCurrentFolderID()); // Reload current folder
         } else {
             throw new Error('Delete failed');
         }
@@ -712,7 +683,7 @@ function hidePinModal() {
     if (!pinModal || !pinInput) return;
     pinModal.classList.remove('show');
     pinInput.value = '';
-        pendingPinAction = null;
+    pendingPinAction = null;
     document.body.style.overflow = '';
 }
 
@@ -724,10 +695,10 @@ function handlePinSubmit() {
         pinInput.focus();
         return;
     }
-        if (pendingPinAction?.type === 'file') {
-            downloadFile(pendingPinAction.id, pin);
-        } else if (pendingPinAction?.type === 'folder') {
-            folderPinCache.set(pendingPinAction.id, pin);
-            navigateToFolder(pendingPinAction.id, pendingPinAction.name || '', pin);
-        }
+    if (pendingPinAction?.type === 'file') {
+        downloadFile(pendingPinAction.id, pin);
+    } else if (pendingPinAction?.type === 'folder') {
+        folderNav.cacheFolderPin(pendingPinAction.id, pin);
+        folderNav.navigateToFolder(pendingPinAction.id, pendingPinAction.name || '', pin, loadFiles);
+    }
 }

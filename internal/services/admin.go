@@ -14,19 +14,15 @@ var (
 )
 
 func AuthAdmin(userName, plainPassword, path string) (bool, error) {
-	list, err := storage.LoadAdminList(path)
+
+	admin, err := storage.GetAdminByUsername(userName)
 	if err != nil {
-		return false, fmt.Errorf("failed to load list: %w", err)
+		return false, fmt.Errorf("faild to get admin:%w", err)
 	}
 
-	for _, admin := range list {
-		if admin.Username == userName {
-			err := bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(plainPassword))
-			if err == nil {
-				return true, nil
-			}
-			return false, ErrWrongPassword
-		}
+	err = bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(plainPassword))
+	if err == nil {
+		return true, nil
 	}
-	return false, ErrUserNotFound
+	return false, ErrWrongPassword
 }
