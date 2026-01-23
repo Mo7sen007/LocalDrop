@@ -28,3 +28,5 @@ Thumbs.db
 scripts/
 .hintrc
 .env
+# Added by goreleaser init:
+dist/
