@@ -18,6 +18,7 @@ import (
 
 func DownloadFolderHandler(c *gin.Context) {
 	folderIDStr := c.Param("id")
+	pinCode := c.Query("pin")
 	folderId, err := uuid.Parse(folderIDStr)
 	if err != nil {
 		c.String(http.StatusBadRequest, "Invalid UUID format")
@@ -30,6 +31,18 @@ func DownloadFolderHandler(c *gin.Context) {
 		return
 	}
 
+	if folder.PinCode != nil && *folder.PinCode != "" {
+		if pinCode == "" {
+			c.String(http.StatusUnauthorized, "PIN code required")
+			return
+		}
+
+		verified := services.CheckPasswordHash(pinCode, *folder.PinCode)
+		if !verified {
+			c.String(http.StatusUnauthorized, "Incorrect PIN code")
+			return
+		}
+	}
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s.zip\"", folder.Name))
 	c.Header("Content-Type", "application/zip")
 
