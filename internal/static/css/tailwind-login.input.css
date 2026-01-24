@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body { @apply font-sans bg-slate-50 text-slate-900; }
+}
+
+@layer components {
+  .font-display { font-family: "Press Start 2P", cursive; }
+  .font-body { font-family: "Inter", system-ui, sans-serif; }
+
+  .retro-card { @apply bg-white border-2 border-slate-900 rounded-xl overflow-hidden shadow-[6px_6px_0_0_#0f172a]; }
+  .retro-card-sm { @apply bg-white border-2 border-slate-900 rounded-lg overflow-hidden shadow-[4px_4px_0_0_#0f172a]; }
+  .retro-btn { @apply inline-flex items-center gap-2 border-2 border-slate-900 rounded-lg px-4 py-2 font-semibold bg-amber-300 shadow-[4px_4px_0_0_#0f172a] transition-transform duration-200 ease-out; }
+  .retro-btn:hover { @apply -translate-x-0.5 -translate-y-0.5; }
+  .retro-btn:active { @apply translate-x-0.5 translate-y-0.5 shadow-[2px_2px_0_0_#0f172a]; }
+  .retro-btn.primary { @apply bg-emerald-300; }
+  .retro-input { @apply w-full border-2 border-slate-900 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-4 focus:ring-slate-200 shadow-[3px_3px_0_0_#0f172a]; }
+  .retro-input:focus { @apply -translate-x-0.5 -translate-y-0.5 shadow-[4px_4px_0_0_#0f172a]; }
+
+  .error { @apply hidden text-sm border-2 border-slate-900 rounded-lg px-3 py-3 bg-rose-200 text-slate-900 shadow-[3px_3px_0_0_#0f172a]; }
+  .error.show { @apply block; }
+  .error.success { @apply bg-emerald-200; }
+  .login-button:disabled { @apply opacity-60 cursor-not-allowed; }
+}

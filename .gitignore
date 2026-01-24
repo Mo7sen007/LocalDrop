@@ -11,6 +11,9 @@ adminList.json
 listOfFiles.json
 localdrop.db
 
+# Node.js
+node_modules/
+
 # Testing
 internal/services/testing/
 
@@ -28,5 +31,6 @@ Thumbs.db
 scripts/
 .hintrc
 .env
+
 # Added by goreleaser init:
 dist/

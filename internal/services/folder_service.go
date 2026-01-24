@@ -1,7 +1,9 @@
 package services
 
 import (
+	"archive/zip"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -9,9 +11,9 @@ import (
 	"time"
 
 	"github.com/Mo7sen007/LocalDrop/internal/models"
-	"github.com/Mo7sen007/LocalDrop/internal/paths"
 	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
 	"github.com/Mo7sen007/LocalDrop/internal/storage"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
@@ -39,6 +41,40 @@ func GetFolderContentByID(folderID uuid.UUID) ([]models.File, []models.Folder, e
 	return files, subFolders, nil
 }
 
+func resolveRootFolderName(files []*multipart.FileHeader, pathsList []string, displayName string, parentFolderID *uuid.UUID) string {
+	baseName := strings.TrimSpace(displayName)
+	if baseName == "" {
+		if len(files) == 0 {
+			return ""
+		}
+		relPath := files[0].Filename
+		if len(pathsList) > 0 && pathsList[0] != "" {
+			relPath = pathsList[0]
+		}
+		parts := strings.Split(filepath.ToSlash(relPath), "/")
+		if len(parts) > 1 {
+			baseName = parts[0]
+		}
+	}
+
+	if baseName == "" {
+		return ""
+	}
+
+	name := baseName
+	if existing, err := storage.GetFolderByNameAndParent(name, parentFolderID); err == nil && existing != nil {
+		for i := 1; ; i++ {
+			candidate := fmt.Sprintf("%s (%d)", baseName, i)
+			if existing, err := storage.GetFolderByNameAndParent(candidate, parentFolderID); err != nil || existing == nil {
+				name = candidate
+				break
+			}
+		}
+	}
+
+	return name
+}
+
 // SaveFolder saves an entire folder structure with nested files and subfolders
 // Parameters:
 // - c: Gin context for accessing request data and multipart form
@@ -61,18 +97,18 @@ func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderI
 		// Use the parent folder's path as the base
 		basePath = parentFolder.Path
 	} else {
-		// No parent folder specified, use the default files directory
-		defaultPath, err := paths.GetFilesPath()
+		// No parent folder specified, use the Root folder path
+		rootFolder, err := storage.GetRoot()
 		if err != nil {
-			return fmt.Errorf("could not get base path: %w", err)
+			return fmt.Errorf("could not get root folder: %w", err)
 		}
-		basePath = defaultPath
+		basePath = rootFolder.Path
 	}
 
 	// Track the current parent ID as we traverse the folder structure
 	currentParentID := parentFolderID
 
-	rootNameOverride := strings.TrimSpace(displayName)
+	rootNameOverride := resolveRootFolderName(files, pathsList, displayName, parentFolderID)
 
 	// Iterate through each file and its corresponding path
 
@@ -168,5 +204,45 @@ func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderI
 	}
 
 	serverlog.Infof("Successfully uploaded folder structure with %d files", len(files))
+	return nil
+}
+
+func CreateFolderZip(folder *models.Folder, basePath string, responseWriter gin.ResponseWriter) error {
+
+	zipWriter := zip.NewWriter(responseWriter)
+	defer zipWriter.Close()
+
+	for _, file := range folder.Files {
+
+		srcFile, err := os.Open(file.Path)
+		if err != nil {
+			serverlog.Errorf("Failed to open file %s: %v", file.Path, err)
+			continue
+		}
+		defer srcFile.Close()
+
+		zipPath := filepath.Join(basePath, file.Name)
+		zipFile, err := zipWriter.Create(zipPath)
+		if err != nil {
+			return err
+		}
+
+		if _, err := io.Copy(zipFile, srcFile); err != nil {
+			return err
+		}
+	}
+
+	for _, subFolder := range folder.SubFolder {
+		fullSubFolder, err := storage.GetFolder(subFolder.ID)
+		if err != nil {
+			serverlog.Errorf("Failed to fetch subfolder %s: %v", subFolder.Name, err)
+			continue
+		}
+
+		newBasePath := filepath.Join(basePath, subFolder.Name)
+		if err := CreateFolderZip(fullSubFolder, newBasePath, responseWriter); err != nil {
+			return err
+		}
+	}
 	return nil
 }

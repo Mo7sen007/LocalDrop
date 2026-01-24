@@ -31,12 +31,12 @@ type Server struct {
 	config *models.Config
 }
 
-func NewServer(port *int, authEnabled *bool, loggingLevel *string) *Server {
+func NewServer(port *int, authEnabled *bool, loggingLevel *string) (*Server, error) {
 	var server Server
 	serverConfig, err := config.GetConfig()
 	if err != nil {
 		serverlog.Errorf("Faild to get server config")
-		return nil
+		return nil, fmt.Errorf("failed to get server config: %w", err)
 	}
 	if port != nil {
 		serverConfig.App.Port = *port
@@ -51,15 +51,15 @@ func NewServer(port *int, authEnabled *bool, loggingLevel *string) *Server {
 	err = serverConfig.Validate()
 	if err != nil {
 		serverlog.Errorf("Invalid parameters:%v", err)
-		return nil
+		return nil, fmt.Errorf("incalid parameters:%w", err)
 	}
 	server.config = &serverConfig
 	err = config.SaveConfig(&serverConfig)
 	if err != nil {
-		serverlog.Errorf("Couldn't save config to disk:%v", err)
-		return nil
+		serverlog.Errorf("failed to save config to disk:%v", err)
+		return nil, fmt.Errorf("failed to save config to disk:%w", err)
 	}
-	return &server
+	return &server, nil
 }
 
 //helper functions for setupRouter()
@@ -147,7 +147,6 @@ func (s *Server) setupRouter() error {
 
 	s.router.GET("/rootfilesandfolders", handlers.GetRootFilesAndFoldersHandler)
 	s.router.GET("/folder/content/:id", handlers.GetFolderHandler)
-	s.router.GET("/allfiles", handlers.GetAllFilesHandler)
 
 	s.router.GET("/listOfFiles", func(c *gin.Context) {
 		rootFolder, err := storage.GetRoot()
@@ -163,8 +162,6 @@ func (s *Server) setupRouter() error {
 	s.router.POST("/logout", handlers.LogoutHandler)
 	s.router.GET("/download/:id", handlers.DownloadFileHandler)
 	s.router.GET("/download-folder/:id", handlers.DownloadFolderHandler)
-	s.router.GET("/hasPin/:id", handlers.HasPinHandler)
-	s.router.GET("/hasFolderPin/:id", handlers.HasFolderPinHandler)
 
 	if s.config.Auth.Enabled {
 		authGroup := s.router.Group("/", middleware.AuthMiddleware())

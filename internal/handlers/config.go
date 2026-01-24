@@ -27,14 +27,14 @@ func UpdateConfig(c *gin.Context) {
 	var requestBody models.Config
 
 	if err := c.BindJSON(&requestBody); err != nil {
-		serverlog.Errorf("couldn't parse config file, error:%v", err)
+		serverlog.Errorf("failed to parse config file, error:%v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Error parsing file"})
 		return
 	}
 
 	if err := requestBody.Validate(); err != nil {
 		serverlog.Warnf("invalid config update: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Error validating file"})
 		return
 	}
 
@@ -42,7 +42,7 @@ func UpdateConfig(c *gin.Context) {
 
 	if err != nil {
 		serverlog.Errorf("couldn't save config file, error:%v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "error saving file"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error saving file"})
 		return
 	}
 

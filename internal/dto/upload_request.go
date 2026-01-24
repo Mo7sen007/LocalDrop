@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type UploadFileRequestBody struct {
+type UploadRequestBody struct {
 	FileHeaders    []*multipart.FileHeader
 	DisplayName    string     `json:"display_name,omitempty" form:"display_name"`
 	PinCode        string     `json:"pin_code,omitempty" form:"pin_code"`

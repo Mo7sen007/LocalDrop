@@ -1,0 +1,10 @@
+{
+  "name": "localdrop-ui",
+  "private": true,
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  },
+  "scripts": {
+    "build:css": "tailwindcss -c tailwind.config.js -i ./internal/static/css/tailwind-login.input.css -o ./internal/static/css/tailwind-login.css --minify && tailwindcss -c tailwind.config.js -i ./internal/static/css/tailwind-dashboard.input.css -o ./internal/static/css/tailwind-dashboard.css --minify && tailwindcss -c tailwind.config.js -i ./internal/static/css/tailwind-download.input.css -o ./internal/static/css/tailwind-download.css --minify && tailwindcss -c tailwind.config.js -i ./internal/static/css/tailwind-config.input.css -o ./internal/static/css/tailwind-config.css --minify"
+  }
+}

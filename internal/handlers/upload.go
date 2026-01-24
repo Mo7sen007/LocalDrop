@@ -15,12 +15,12 @@ import (
 	"github.com/google/uuid"
 )
 
-func parseUploadForm(c *gin.Context) (dto.UploadFileRequestBody, string, error) {
-	var requestBody dto.UploadFileRequestBody
+func parseUploadForm(c *gin.Context) (dto.UploadRequestBody, string, error) {
+	var requestBody dto.UploadRequestBody
 	var basePath string
 	form, err := c.MultipartForm()
 	if err != nil {
-		return dto.UploadFileRequestBody{}, "", fmt.Errorf("multipart form: %w", err)
+		return dto.UploadRequestBody{}, "", fmt.Errorf("multipart form: %w", err)
 	}
 
 	requestBody.FileHeaders = form.File["files"]
@@ -47,14 +47,14 @@ func parseUploadForm(c *gin.Context) (dto.UploadFileRequestBody, string, error) 
 	if requestBody.PinCode != "" {
 		requestBody.PinCode, err = services.HashPassword(requestBody.PinCode)
 		if err != nil {
-			return dto.UploadFileRequestBody{}, "", fmt.Errorf("error parsing pin code: %w", err)
+			return dto.UploadRequestBody{}, "", fmt.Errorf("error parsing pin code: %w", err)
 		}
 	}
 
 	if folderIdStr != "" {
 		parsed, err := uuid.Parse(folderIdStr)
 		if err != nil {
-			return dto.UploadFileRequestBody{}, "", fmt.Errorf("invalid folder id: %w", err)
+			return dto.UploadRequestBody{}, "", fmt.Errorf("invalid folder id: %w", err)
 		}
 		requestBody.ParentFolderID = &parsed
 	}
@@ -125,7 +125,7 @@ func uniqueDiskName(original string) string {
 	return fmt.Sprintf("%s-%s%s", base, uuid.New().String(), ext)
 }
 
-func handleSingleFile(requestBody dto.UploadFileRequestBody, basePath string) error {
+func handleSingleFile(requestBody dto.UploadRequestBody, basePath string) error {
 	var targetDir string
 	var fileFolderID *uuid.UUID
 
@@ -137,10 +137,11 @@ func handleSingleFile(requestBody dto.UploadFileRequestBody, basePath string) er
 		targetDir = folder.Path
 		fileFolderID = &folder.ID
 	} else {
-		if basePath == "" {
-			return fmt.Errorf("no base path available for upload")
+		rootFolder, err := storage.GetRoot()
+		if err != nil {
+			return fmt.Errorf("no root folder available for upload: %w", err)
 		}
-		targetDir = basePath
+		targetDir = rootFolder.Path
 		fileFolderID = nil
 	}
 
@@ -152,7 +153,7 @@ func handleSingleFile(requestBody dto.UploadFileRequestBody, basePath string) er
 	return nil
 }
 
-func handleMultipleFiles(requestBody dto.UploadFileRequestBody, basePath string) error {
+func handleMultipleFiles(requestBody dto.UploadRequestBody, basePath string) error {
 	var targetDir string
 	var fileFolderID *uuid.UUID
 
@@ -164,10 +165,11 @@ func handleMultipleFiles(requestBody dto.UploadFileRequestBody, basePath string)
 		targetDir = f.Path
 		fileFolderID = &f.ID
 	} else {
-		if basePath == "" {
-			return fmt.Errorf("no base path available for upload")
+		rootFolder, err := storage.GetRoot()
+		if err != nil {
+			return fmt.Errorf("no root folder available for upload: %w", err)
 		}
-		targetDir = basePath
+		targetDir = rootFolder.Path
 		fileFolderID = nil
 	}
 

@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body { @apply font-sans bg-slate-50 text-slate-900; }
+}
+
+@layer components {
+  .font-display { font-family: "Press Start 2P", cursive; }
+  .font-body { font-family: "Inter", system-ui, sans-serif; }
+
+  .retro-card { @apply bg-white border-2 border-slate-900 rounded-xl overflow-hidden shadow-[6px_6px_0_0_#0f172a]; }
+  .retro-card-sm { @apply bg-white border-2 border-slate-900 rounded-lg overflow-hidden shadow-[4px_4px_0_0_#0f172a]; }
+  .retro-btn { @apply inline-flex items-center gap-2 border-2 border-slate-900 rounded-lg px-4 py-2 font-semibold bg-amber-300 shadow-[4px_4px_0_0_#0f172a] transition-transform duration-200 ease-out; }
+  .retro-btn:hover { @apply -translate-x-0.5 -translate-y-0.5; }
+  .retro-btn:active { @apply translate-x-0.5 translate-y-0.5 shadow-[2px_2px_0_0_#0f172a]; }
+  .retro-btn.secondary { @apply bg-slate-200; }
+  .retro-btn.primary { @apply bg-emerald-300; }
+  .retro-input { @apply w-full border-2 border-slate-900 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-4 focus:ring-slate-200 shadow-[3px_3px_0_0_#0f172a]; }
+  .retro-input:focus { @apply -translate-x-0.5 -translate-y-0.5 shadow-[4px_4px_0_0_#0f172a]; }
+
+  .retro-table { @apply w-full border-collapse; }
+  .retro-table th { @apply text-left text-xs uppercase tracking-widest bg-slate-100 border-b-2 border-slate-900 px-4 py-3; }
+  .retro-table td { @apply border-b border-slate-200 px-4 py-3; }
+  .retro-table tr:hover td { @apply bg-slate-50; }
+
+  .name-cell { @apply min-w-0; }
+  .name-stack { @apply flex items-center gap-2 min-w-0; }
+  .name-text { @apply truncate font-semibold; }
+
+  .download-cell { @apply inline-flex items-center gap-2 border-2 border-slate-900 rounded-md px-2 py-1 text-sm bg-sky-200 shadow-[2px_2px_0_0_#0f172a] transition-transform duration-200 ease-out; }
+  .download-cell:hover { @apply -translate-x-0.5 -translate-y-0.5; }
+  .download-cell:active { @apply translate-x-0.5 translate-y-0.5 shadow-[1px_1px_0_0_#0f172a]; }
+  .file-size { @apply inline-flex items-center text-xs px-2 py-1 border-2 border-slate-900 rounded-md bg-slate-100 shadow-[2px_2px_0_0_#0f172a]; }
+
+  .loading { @apply flex flex-col items-center justify-center py-10 text-slate-600; }
+  .loading-spinner { @apply h-10 w-10 rounded-full border-4 border-slate-200 border-t-slate-900 animate-spin mb-3; }
+  .empty-state { @apply text-center py-10 text-slate-600; }
+  .empty-icon { @apply text-4xl mb-3; }
+
+  .modal { @apply fixed inset-0 hidden items-center justify-center bg-black/50 backdrop-blur-sm z-50; }
+  .modal.show { @apply flex; }
+  .modal-content { @apply retro-card w-full max-w-md; }
+}

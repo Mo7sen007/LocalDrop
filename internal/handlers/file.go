@@ -79,32 +79,3 @@ func DeleteFileHandler(c *gin.Context) {
 	serverlog.Infof("Deleted file with ID:%s ", fileIdStr)
 	c.String(http.StatusOK, fmt.Sprintf("File '%s' deleted successfully", file.Name))
 }
-
-func HasPinHandler(c *gin.Context) {
-	fileIdStr := c.Param("id")
-	fileId, err := uuid.Parse(fileIdStr)
-	if err != nil {
-		serverlog.Warnf("Invalid UUID format :%v", err)
-		c.String(http.StatusBadRequest, "Invalid UUID format")
-		return
-	}
-	file, found := services.GetFileByID(fileId)
-
-	if !found {
-		serverlog.Warnf("File  is not present")
-		c.String(http.StatusNotFound, "File is not present")
-		return
-	}
-
-	hasPin := services.HasPinCode(file)
-	c.JSON(http.StatusOK, gin.H{
-		"hasPIN": hasPin,
-	})
-}
-
-func GetAllFilesHandler(c *gin.Context) {
-	files := services.GetAllFiles()
-	c.JSON(http.StatusOK, gin.H{
-		"files": files,
-	})
-}

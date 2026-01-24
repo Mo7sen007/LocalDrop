@@ -12,6 +12,7 @@ import (
 	"github.com/Mo7sen007/LocalDrop/internal/config"
 	"github.com/Mo7sen007/LocalDrop/internal/models"
 	"github.com/Mo7sen007/LocalDrop/internal/paths"
+	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
 	"github.com/Mo7sen007/LocalDrop/internal/storage"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
@@ -36,23 +37,28 @@ func init() {
 
 func runInit() error {
 	if err := paths.Initialize(); err != nil {
+		serverlog.Errorf("failed to initialize paths: %v", err)
 		return fmt.Errorf("failed to initialize paths: %w", err)
 	}
 
 	if err := storage.Init(); err != nil {
+		serverlog.Errorf("failed to initialize storage: %v", err)
 		return fmt.Errorf("failed to initialize storage: %w", err)
 	}
 
 	if _, err := config.GetConfig(); err != nil {
+		serverlog.Errorf("failed to load config: %v", err)
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
 	admins, err := storage.GetAllAdmins()
 	if err != nil {
+		serverlog.Errorf("failed to read admins: %v", err)
 		return fmt.Errorf("failed to read admins: %w", err)
 	}
 
 	if len(admins) > 0 {
+		serverlog.Infof("Admin already exists. Skipping admin creation.")
 		fmt.Println("Admin already exists. Skipping admin creation.")
 		return nil
 	}

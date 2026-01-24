@@ -183,9 +183,15 @@ func startServer(portOverride *int, authOverride *bool, effectivePort int, effec
 	}
 	defer serverlog.Close()
 
-	server := internal.NewServer(portOverride, authOverride, nil)
+	server, err := internal.NewServer(portOverride, authOverride, nil)
+	if err != nil {
+		serverlog.Errorf("failed to initialize server: %v", err)
+		fmt.Printf("Failed to start server : %v\n", err)
+		return
+	}
 	if err := server.Init(); err != nil {
-		fmt.Printf("Failed to initialize server: %v\n", err)
+		serverlog.Errorf("failed to setup up server: %v", err)
+		fmt.Printf("Failed to start server: %v\n", err)
 		return
 	}
 

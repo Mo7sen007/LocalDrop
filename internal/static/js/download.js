@@ -147,12 +147,12 @@ function updateTable(data, isRoot) {
 
         row.querySelector('.download-btn')?.addEventListener('click', (e) => {
             e.stopPropagation();
-            handleFolderDownload(folder.id);
+            handleFolderDownload(folder.id, folder.isProtected);
         });
 
         row.onclick = (e) => {
             if (!e.target.closest('.download-cell')) {
-                handleFolderNavigation(folder.id, folder.name || '');
+                handleFolderNavigation(folder.id, folder.name || '', folder.isProtected);
             }
         };
         tbody.appendChild(row);
@@ -175,7 +175,7 @@ function updateTable(data, isRoot) {
                 <button class="download-cell download-btn" type="button">Download</button>
             </td>
         `;
-        row.querySelector('.download-btn')?.addEventListener('click', () => handleFileDownload(file.id));
+        row.querySelector('.download-btn')?.addEventListener('click', () => handleFileDownload(file.id, file.isProtected));
         tbody.appendChild(row);
     });
 
@@ -203,47 +203,51 @@ function formatFileSize(bytes) {
 }
 
 // Handle file download
-async function handleFileDownload(fileId) {
+async function handleFileDownload(fileId, isProtected) {
     if (!fileId) {
         showError('Invalid file ID');
         return;
     }
     
     try {
-        // Check if file has a PIN
-        const response = await fetch(`/hasPin/${fileId}`);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data.hasPIN) {
+        if (isProtected === true) {
             pendingPinAction = { type: 'file', id: fileId };
             showModal('file');
-        } else {
-            // Direct download
-            downloadFile(fileId, '');
+            return;
         }
-        
+
+        downloadFile(fileId, '');
     } catch (error) {
-        console.error('Error checking file PIN:', error);
+        console.error('Error starting download:', error);
         showError('Failed to process download request');
     }
 }
 
-async function handleFolderNavigation(folderId, folderName) {
+async function checkFolderProtection(folderId) {
+    const response = await fetch(`/folder/content/${folderId}`);
+    if (response.status === 401) {
+        return true;
+    }
+    if (!response.ok) {
+        throw new Error('Failed to check folder protection');
+    }
+    const data = await response.json();
+    return !!data.isProtected;
+}
+
+async function handleFolderNavigation(folderId, folderName, isProtected) {
     try {
+        if (typeof isProtected === 'boolean') {
+            if (isProtected) {
+                pendingPinAction = { type: 'folder-open', id: folderId, name: folderName };
+                showModal('folder-open');
+                return;
+            }
+            return folderNav.navigateToFolder(folderId, folderName, '', loadFiles);
+        }
+
         await folderNav.handleFolderNavigation(folderId, folderName, {
-            checkPin: async (id) => {
-                const response = await fetch(`/hasFolderPin/${id}`);
-                if (!response.ok) {
-                    throw new Error('Failed to check folder PIN');
-                }
-                const data = await response.json();
-                return !!data.hasPIN;
-            },
+            checkPin: checkFolderProtection,
             onPinRequired: (payload) => {
                 pendingPinAction = { ...payload, type: 'folder-open' };
                 showModal('folder-open');
@@ -281,21 +285,25 @@ function downloadFile(fileId, pin = '') {
 }
 
 // Handle folder download
-function handleFolderDownload(folderId) {
+function handleFolderDownload(folderId, isProtected) {
     if (!folderId) {
         showError('Invalid folder ID');
         return;
     }
 
-    fetch(`/hasFolderPin/${folderId}`)
-        .then((response) => {
-            if (!response.ok) {
-                throw new Error('Failed to check folder PIN');
-            }
-            return response.json();
-        })
-        .then((data) => {
-            if (data.hasPIN) {
+    if (typeof isProtected === 'boolean') {
+        if (isProtected) {
+            pendingPinAction = { type: 'folder-download', id: folderId };
+            showModal('folder-download');
+            return;
+        }
+        downloadFolder(folderId, '');
+        return;
+    }
+
+    checkFolderProtection(folderId)
+        .then((resolvedProtection) => {
+            if (resolvedProtection) {
                 pendingPinAction = { type: 'folder-download', id: folderId };
                 showModal('folder-download');
                 return;

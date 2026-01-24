@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/Mo7sen007/LocalDrop/internal/models"
@@ -165,15 +166,28 @@ func GetFolder(folderId uuid.UUID) (*models.Folder, error) {
 }
 
 func DeleteFolder(folderId uuid.UUID) error {
-	// this deletes all sub-content automatically!!
-
+	// delete sub-content explicitly to avoid leftover rows when FK enforcement is off
 	tx, err := DB.Begin()
-
 	if err != nil {
-		_ = tx.Rollback()
 		return err
 	}
-	_, err = tx.Exec("DELETE FROM folders WHERE id = ?", folderId.String())
+	defer func() { _ = tx.Rollback() }()
+
+	var folderPath string
+	if err := tx.QueryRow("SELECT path FROM folders WHERE id = ?", folderId.String()).Scan(&folderPath); err != nil {
+		return err
+	}
+
+	pathPrefix := folderPath + string(os.PathSeparator) + "%"
+
+	if _, err := tx.Exec("DELETE FROM files WHERE path LIKE ?", pathPrefix); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec("DELETE FROM folders WHERE path LIKE ? OR id = ?", pathPrefix, folderId.String()); err != nil {
+		return err
+	}
+
 	return tx.Commit()
 }
 
@@ -221,6 +235,9 @@ func getFolderFiles(folderID uuid.UUID) ([]models.File, error) {
 		if folderIDStr.Valid {
 			parsedID := uuid.MustParse(folderIDStr.String)
 			file.FolderID = &parsedID
+		}
+		if pin.Valid {
+			file.Pin = &pin.String
 		}
 		files = append(files, file)
 	}

@@ -333,7 +333,7 @@ async function loadFiles(folderId = null, pin = '') {
                 row.onclick = (e) => {
                     // Only navigate if not clicking on action buttons
                     if (!e.target.closest('.btn-link') && !e.target.closest('button')) {
-                            handleFolderNavigation(folder.id, folder.name);
+                            handleFolderNavigation(folder.id, folder.name, folder.isProtected);
                     }
                 };
                 tbody.appendChild(row);
@@ -403,7 +403,8 @@ async function loadFiles(folderId = null, pin = '') {
                 event.stopPropagation();
                 const fileId = btn.getAttribute('data-file-id');
                 if (fileId) {
-                    await handleFileDownload(fileId);
+                    const file = (data.files || []).find((item) => item.id === fileId);
+                    await handleFileDownload(fileId, file?.isProtected);
                 }
             });
         });
@@ -414,7 +415,8 @@ async function loadFiles(folderId = null, pin = '') {
                 event.stopPropagation();
                 const folderId = btn.getAttribute('data-folder-id');
                 if (folderId) {
-                    await handleFolderDownload(folderId);
+                    const folder = (data.folders || []).find((item) => item.id === folderId);
+                    await handleFolderDownload(folderId, folder?.isProtected);
                 }
             });
         });
@@ -440,17 +442,31 @@ function renderBackButton(table) {
     table.appendChild(tbody);
 }
 
-async function handleFolderNavigation(folderId, folderName) {
+async function checkFolderProtection(folderId) {
+    const response = await fetch(`/folder/content/${folderId}`);
+    if (response.status === 401) {
+        return true;
+    }
+    if (!response.ok) {
+        throw new Error('Failed to check folder protection');
+    }
+    const data = await response.json();
+    return !!data.isProtected;
+}
+
+async function handleFolderNavigation(folderId, folderName, isProtected) {
     try {
+        if (typeof isProtected === 'boolean') {
+            if (isProtected) {
+                pendingPinAction = { type: 'folder-open', id: folderId, name: folderName };
+                showPinModal('folder-open');
+                return;
+            }
+            return folderNav.navigateToFolder(folderId, folderName, '', loadFiles);
+        }
+
         await folderNav.handleFolderNavigation(folderId, folderName, {
-            checkPin: async (id) => {
-                const response = await fetch(`/hasFolderPin/${id}`);
-                if (!response.ok) {
-                    throw new Error('Failed to check folder PIN');
-                }
-                const data = await response.json();
-                return !!data.hasPIN;
-            },
+            checkPin: checkFolderProtection,
             onPinRequired: (payload) => {
                 pendingPinAction = { ...payload, type: 'folder-open' };
                 showPinModal('folder-open');
@@ -669,32 +685,34 @@ function buildDownloadLink(id) {
     return `${window.location.origin}/download/${id}`;
 }
 
-async function handleFileDownload(fileId) {
+async function handleFileDownload(fileId, isProtected) {
     try {
-        const response = await fetch(`/hasPin/${fileId}`);
-        if (!response.ok) {
-            throw new Error('Failed to check PIN');
-        }
-        const data = await response.json();
-        if (data.hasPIN) {
+        if (isProtected === true) {
             pendingPinAction = { type: 'file', id: fileId };
             showPinModal('file');
-        } else {
-            downloadFile(fileId, '');
+            return;
         }
+
+        downloadFile(fileId, '');
     } catch (error) {
         showToast('Failed to start download', 'error');
     }
 }
 
-async function handleFolderDownload(folderId) {
+async function handleFolderDownload(folderId, isProtected) {
     try {
-        const response = await fetch(`/hasFolderPin/${folderId}`);
-        if (!response.ok) {
-            throw new Error('Failed to check folder PIN');
+        if (typeof isProtected === 'boolean') {
+            if (isProtected) {
+                pendingPinAction = { type: 'folder-download', id: folderId };
+                showPinModal('folder-download');
+            } else {
+                downloadFolder(folderId, '');
+            }
+            return;
         }
-        const data = await response.json();
-        if (data.hasPIN) {
+
+        const resolvedProtection = await checkFolderProtection(folderId);
+        if (resolvedProtection) {
             pendingPinAction = { type: 'folder-download', id: folderId };
             showPinModal('folder-download');
         } else {
