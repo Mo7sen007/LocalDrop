@@ -13,8 +13,10 @@ import (
 	"github.com/Mo7sen007/LocalDrop/internal/middleware"
 	"github.com/Mo7sen007/LocalDrop/internal/models"
 	"github.com/Mo7sen007/LocalDrop/internal/paths"
+	"github.com/Mo7sen007/LocalDrop/internal/services"
 	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
 	"github.com/Mo7sen007/LocalDrop/internal/storage"
+	storagesql "github.com/Mo7sen007/LocalDrop/internal/storage/sql"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
@@ -25,10 +27,13 @@ import (
 var staticFS embed.FS
 
 type Server struct {
-	router *gin.Engine
-	dns    *mdns.Server
-	root   *models.Folder
-	config *models.Config
+	router        *gin.Engine
+	dns           *mdns.Server
+	root          *models.Folder
+	config        *models.Config
+	folderHandler *handlers.FolderHandler
+	fileHandler   *handlers.FileHandler
+	adminHandler  *handlers.AdminHandler
 }
 
 func NewServer(port *int, authEnabled *bool, loggingLevel *string) (*Server, error) {
@@ -59,6 +64,7 @@ func NewServer(port *int, authEnabled *bool, loggingLevel *string) (*Server, err
 		serverlog.Errorf("failed to save config to disk:%v", err)
 		return nil, fmt.Errorf("failed to save config to disk:%w", err)
 	}
+
 	return &server, nil
 }
 
@@ -245,9 +251,23 @@ func (s *Server) Init() error {
 		return fmt.Errorf("failed to initialize paths: %w", err)
 	}
 
-	if err := storage.Init(); err != nil {
+	db, err := storagesql.Init()
+	if err != nil {
 		return fmt.Errorf("failed to initialize storage: %w", err)
 	}
+	// keep db open for server lifetime (close on shutdown)
+	repo := storagesql.NewSQLRepository(db)
+	fileRepo := 
+
+	// construct services using interfaces and the single concrete repo
+	fileSvc := services.NewFileService(repo)
+	folderSvc := services.NewFolderService(repo, repo, fileSvc)
+	adminSvc := services.NewAdminService(repo)
+
+	// construct handlers/controllers with services
+	s.folderHandler = handlers.NewFolderHandler(folderSvc, fileSvc)
+	s.fileHandler = handlers.NewFileHandler(fileSvc)
+	s.adminHandler = handlers.NewAdminHandler(adminSvc)
 
 	// Setup router, mDNS, etc.
 	if err := s.setupRouter(); err != nil {
@@ -258,7 +278,7 @@ func (s *Server) Init() error {
 		return fmt.Errorf("failed to setup mDNS: %w", err)
 	}
 
-	s.root, err = storage.GetRoot()
+	s.root, err = repo.GetRoot()
 	if err != nil {
 		return fmt.Errorf("failed to get root folder: %w", err)
 	}

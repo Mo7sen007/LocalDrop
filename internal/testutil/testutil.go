@@ -8,7 +8,7 @@ import (
 	"github.com/Mo7sen007/LocalDrop/internal/config"
 	"github.com/Mo7sen007/LocalDrop/internal/models"
 	"github.com/Mo7sen007/LocalDrop/internal/paths"
-	"github.com/Mo7sen007/LocalDrop/internal/storage"
+	storagesql "github.com/Mo7sen007/LocalDrop/internal/storage/sql"
 )
 
 func SetTestEnv(tempDir string) {
@@ -20,14 +20,21 @@ func SetTestEnv(tempDir string) {
 func ResetStorage(t *testing.T) {
 	t.Helper()
 
+	db, err := storagesql.Init()
+	if err != nil {
+		t.Fatalf("failed to init storage: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	r := storagesql.NewSQLRepository(db)
+
 	filesPath, err := paths.GetFilesPath()
 	if err != nil {
 		t.Fatalf("failed to get files path: %v", err)
 	}
 
-	if storage.DB != nil {
-		_ = storage.DB.Close()
-		storage.DB = nil
+	if r.GetDB() != nil {
+		_ = r.Close()
 	}
 
 	_ = os.RemoveAll(filepath.Clean(filesPath))
@@ -41,7 +48,7 @@ func ResetStorage(t *testing.T) {
 	}
 	_ = os.Remove(configPath)
 
-	if err := storage.Init(); err != nil {
+	if _, err := storagesql.Init(); err != nil {
 		t.Fatalf("failed to init storage: %v", err)
 	}
 }

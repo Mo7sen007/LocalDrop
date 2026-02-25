@@ -16,33 +16,57 @@ import (
 	"github.com/google/uuid"
 )
 
-func GetAllFiles() []models.File {
-	files, err := storage.GetAllFiles()
+type FileService struct {
+	repo storage.FileRepository
+}
+
+func NewFileService(repo storage.FileRepository) *FileService {
+	return &FileService{repo: repo}
+}
+
+func (s *FileService) GetAllFiles() []*models.File {
+	files, err := s.repo.GetAllFiles()
 	if err != nil {
-		return []models.File{}
+		return []*models.File{}
 	}
 	return files
 }
 
-func GetFileByID(id uuid.UUID) (*models.File, bool) {
-	file, err := storage.GetFile(id)
+func (s *FileService) GetFileByID(id uuid.UUID) (*models.File, bool) {
+
+	file, err := s.repo.GetFileByID(id.String())
 	if err != nil {
 		return nil, false
 	}
 	return file, true
 }
 
-func HasPinCode(file *models.File) bool {
-	return file.Pin != nil && *file.Pin != ""
-}
-
-func DeleteFiles(files []models.File) error {
+func (s *FileService) DeleteFiles(files []models.File) error {
 	for _, file := range files {
 		err := os.Remove(file.Path)
 		if err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+func (s *FileService) DeleteFile(fileID uuid.UUID) error {
+	file, found := s.GetFileByID(fileID)
+	if !found {
+		return fmt.Errorf("file not found")
+	}
+
+	err := os.Remove(file.Path)
+	if err != nil {
+		return fmt.Errorf("error deleting file from disk: %w", err)
+	}
+
+	err = s.repo.DeleteFile(fileID.String())
+	if err != nil {
+		return fmt.Errorf("error deleting file from database: %w", err)
+	}
+
 	return nil
 }
 
@@ -56,18 +80,18 @@ func getMaxUploadSize() int64 {
 }
 
 // SaveUploadedFile writes the multipart upload to disk (atomic via temp file + rename).
-func SaveUploadedFile(file *multipart.FileHeader, dstPath string) error {
+func (s *FileService) SaveUploadedFile(file *multipart.FileHeader, dstPath string) error {
 	return saveMultipartToPath(file, dstPath, getMaxUploadSize())
 }
 
 // SaveFile persists metadata for a file that already exists on disk.
-func SaveFile(filename string, diskPath string, pinCode string, folderID *uuid.UUID) error {
-	return saveFileMetadata(filename, diskPath, pinCode, folderID, getMaxUploadSize())
+func (s *FileService) SaveFile(filename string, diskPath string, pinCode string, folderID *uuid.UUID) error {
+	return s.saveFileMetadata(filename, diskPath, pinCode, folderID, getMaxUploadSize())
 }
 
 // SaveUploadedFileAndCreateRecord:
 // 1) write to disk, 2) persist DB record, 3) cleanup disk file if DB step fails.
-func SaveUploadedFileAndCreateRecord(fileHeader *multipart.FileHeader, diskPath string, pinCode string, folderID *uuid.UUID, displayName string) error {
+func (s *FileService) SaveUploadedFileAndCreateRecord(fileHeader *multipart.FileHeader, diskPath string, pinCode string, folderID *uuid.UUID, displayName string) error {
 	maxSize := getMaxUploadSize()
 
 	if err := saveMultipartToPath(fileHeader, diskPath, maxSize); err != nil {
@@ -82,14 +106,14 @@ func SaveUploadedFileAndCreateRecord(fileHeader *multipart.FileHeader, diskPath 
 		}
 	}
 
-	if err := saveFileMetadata(finalName, diskPath, pinCode, folderID, maxSize); err != nil {
+	if err := s.saveFileMetadata(finalName, diskPath, pinCode, folderID, maxSize); err != nil {
 		_ = os.Remove(diskPath)
 		return err
 	}
 	return nil
 }
 
-func saveFileMetadata(filename string, diskPath string, pinCode string, folderID *uuid.UUID, maxSize int64) error {
+func (s *FileService) saveFileMetadata(filename string, diskPath string, pinCode string, folderID *uuid.UUID, maxSize int64) error {
 	info, err := os.Stat(diskPath)
 	if err != nil {
 		_ = os.Remove(diskPath)
@@ -121,7 +145,7 @@ func saveFileMetadata(filename string, diskPath string, pinCode string, folderID
 		CreatedAt: time.Now(),
 	}
 
-	if err := storage.CreateFile(&uploadedFile); err != nil {
+	if err := s.repo.CreateFile(&uploadedFile); err != nil {
 		_ = os.Remove(diskPath)
 		serverlog.Errorf("Failed to save file metadata to database: %v", err)
 		return fmt.Errorf("could not save file to database: %w", err)

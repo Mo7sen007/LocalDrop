@@ -30,6 +30,7 @@ func TestDeleteFileHandlerInvalidUUID(t *testing.T) {
 
 func TestDeleteFileHandlerSuccess(t *testing.T) {
 	testutil.ResetStorage(t)
+	r := storage.NewSQLRepository(nil)
 
 	filesPath, err := paths.GetFilesPath()
 	if err != nil {

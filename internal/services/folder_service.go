@@ -17,8 +17,22 @@ import (
 	"github.com/google/uuid"
 )
 
-func DeleteFolder(folderID uuid.UUID) error {
-	folder, err := storage.GetFolder(folderID)
+type fileService interface {
+	SaveUploadedFile(fileHeader *multipart.FileHeader, destPath string) error
+	SaveFile(name, path, pin string, parentID *uuid.UUID) error
+}
+type FolderService struct {
+	repo        storage.FolderRepository
+	fileService fileService
+	fileRepo    storage.FileRepository
+}
+
+func NewFolderService(repo storage.FolderRepository, fileRepo storage.FileRepository, fileService fileService) *FolderService {
+	return &FolderService{repo: repo, fileRepo: fileRepo, fileService: fileService}
+}
+
+func (s *FolderService) DeleteFolder(folderID uuid.UUID) error {
+	folder, err := s.repo.GetFolderByID(folderID)
 	if err != nil {
 		return fmt.Errorf("error loading error:%v", err)
 	}
@@ -26,13 +40,16 @@ func DeleteFolder(folderID uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-	storage.DeleteFolder(folderID)
+	err = s.repo.DeleteFolder(folderID.String())
+	if err != nil {
+		return fmt.Errorf("error deleting folder from repository: %v", err)
+	}
 	return nil
 
 }
 
-func GetFolderContentByID(folderID uuid.UUID) ([]models.File, []models.Folder, error) {
-	folder, err := storage.GetFolder(folderID)
+func (s *FolderService) GetFolderContentByID(folderID uuid.UUID) ([]models.File, []models.Folder, error) {
+	folder, err := s.repo.GetFolderByID(folderID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -41,7 +58,7 @@ func GetFolderContentByID(folderID uuid.UUID) ([]models.File, []models.Folder, e
 	return files, subFolders, nil
 }
 
-func resolveRootFolderName(files []*multipart.FileHeader, pathsList []string, displayName string, parentFolderID *uuid.UUID) string {
+func (s *FolderService) resolveRootFolderName(files []*multipart.FileHeader, pathsList []string, displayName string, parentFolderID *uuid.UUID) string {
 	baseName := strings.TrimSpace(displayName)
 	if baseName == "" {
 		if len(files) == 0 {
@@ -62,10 +79,10 @@ func resolveRootFolderName(files []*multipart.FileHeader, pathsList []string, di
 	}
 
 	name := baseName
-	if existing, err := storage.GetFolderByNameAndParent(name, parentFolderID); err == nil && existing != nil {
+	if existing, err := s.repo.GetFolderByNameAndParent(name, parentFolderID); err == nil && existing != nil {
 		for i := 1; ; i++ {
 			candidate := fmt.Sprintf("%s (%d)", baseName, i)
-			if existing, err := storage.GetFolderByNameAndParent(candidate, parentFolderID); err != nil || existing == nil {
+			if existing, err := s.repo.GetFolderByNameAndParent(candidate, parentFolderID); err != nil || existing == nil {
 				name = candidate
 				break
 			}
@@ -83,13 +100,13 @@ func resolveRootFolderName(files []*multipart.FileHeader, pathsList []string, di
 // - parentFolderID: UUID of the parent folder where this structure will be created
 // - pinCode: Optional PIN code for file protection
 // Returns error if folder creation, file save, or database operations fail
-func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderID *uuid.UUID, pinCode string, displayName string) error {
+func (s *FolderService) SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderID *uuid.UUID, pinCode string, displayName string) error {
 	// Determine the base path for saving files
 	var basePath string
 
 	if parentFolderID != nil {
 		// Look up the parent folder to get its path
-		parentFolder, err := storage.GetFolder(*parentFolderID)
+		parentFolder, err := s.repo.GetFolderByID(*parentFolderID)
 		if err != nil {
 			serverlog.Warnf("Parent folder with ID %s not found: %v", parentFolderID.String(), err)
 			return fmt.Errorf("parent folder not found: %w", err)
@@ -98,7 +115,7 @@ func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderI
 		basePath = parentFolder.Path
 	} else {
 		// No parent folder specified, use the Root folder path
-		rootFolder, err := storage.GetRoot()
+		rootFolder, err := s.repo.GetRoot()
 		if err != nil {
 			return fmt.Errorf("could not get root folder: %w", err)
 		}
@@ -108,7 +125,7 @@ func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderI
 	// Track the current parent ID as we traverse the folder structure
 	currentParentID := parentFolderID
 
-	rootNameOverride := resolveRootFolderName(files, pathsList, displayName, parentFolderID)
+	rootNameOverride := s.resolveRootFolderName(files, pathsList, displayName, parentFolderID)
 
 	// Iterate through each file and its corresponding path
 
@@ -136,7 +153,7 @@ func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderI
 		if len(parts) > 1 {
 			for _, folderName := range parts[:len(parts)-1] {
 				// Check if folder already exists under current parent
-				existingFolder, err := storage.GetFolderByNameAndParent(folderName, currentParentID)
+				existingFolder, err := s.repo.GetFolderByNameAndParent(folderName, currentParentID)
 				if err == nil && existingFolder != nil {
 					// Folder exists, use its ID as the parent for the next level
 					currentParentID = &existingFolder.ID
@@ -148,7 +165,7 @@ func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderI
 					var folderPath string
 					if currentParentID != nil {
 						// Get the current parent's path
-						currentParent, err := storage.GetFolder(*currentParentID)
+						currentParent, err := s.repo.GetFolderByID(*currentParentID)
 						if err != nil {
 							serverlog.Errorf("Failed to get parent folder: %v", err)
 							continue
@@ -177,7 +194,7 @@ func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderI
 						CreatedAt: time.Now(),
 						PinCode:   folderPin,
 					}
-					if err := storage.CreateFolder(&newFolder); err != nil {
+					if err := s.repo.CreateFolder(&newFolder); err != nil {
 						serverlog.Errorf("Failed to create folder record %s: %v", folderName, err)
 						continue
 					}
@@ -192,11 +209,11 @@ func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderI
 		// The file will be saved under the currentParentID (which is the deepest folder in the path)
 		finalPath := filepath.Join(basePath, relPath)
 
-		err := SaveUploadedFile(fileHeader, finalPath)
+		err := s.fileService.SaveUploadedFile(fileHeader, finalPath)
 		if err != nil {
 			return err
 		}
-		if err := SaveFile(fileHeader.Filename, finalPath, pinCode, currentParentID); err != nil {
+		if err := s.fileService.SaveFile(fileHeader.Filename, finalPath, pinCode, currentParentID); err != nil {
 			serverlog.Errorf("Failed to save file %s: %v", fileHeader.Filename, err)
 			// Continue with other files even if one fails
 			continue
@@ -207,7 +224,23 @@ func SaveFolder(files []*multipart.FileHeader, pathsList []string, parentFolderI
 	return nil
 }
 
-func CreateFolderZip(folder *models.Folder, basePath string, responseWriter gin.ResponseWriter) error {
+func (s *FolderService) GetRootFolder() (*models.Folder, error) {
+	folder, err := s.repo.GetRoot()
+	if err != nil {
+		return nil, fmt.Errorf("error fetching folder: %w", err)
+	}
+	return folder, nil
+}
+
+func (s *FolderService) GetFolderByID(folderID uuid.UUID) (*models.Folder, error) {
+	folder, err := s.repo.GetFolderByID(folderID)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching folder: %w", err)
+	}
+	return folder, nil
+}
+
+func (s *FolderService) CreateFolderZip(folder *models.Folder, basePath string, responseWriter gin.ResponseWriter) error {
 
 	zipWriter := zip.NewWriter(responseWriter)
 	defer zipWriter.Close()
@@ -233,14 +266,14 @@ func CreateFolderZip(folder *models.Folder, basePath string, responseWriter gin.
 	}
 
 	for _, subFolder := range folder.SubFolder {
-		fullSubFolder, err := storage.GetFolder(subFolder.ID)
+		fullSubFolder, err := s.repo.GetFolderByID(subFolder.ID)
 		if err != nil {
 			serverlog.Errorf("Failed to fetch subfolder %s: %v", subFolder.Name, err)
 			continue
 		}
 
 		newBasePath := filepath.Join(basePath, subFolder.Name)
-		if err := CreateFolderZip(fullSubFolder, newBasePath, responseWriter); err != nil {
+		if err := s.CreateFolderZip(fullSubFolder, newBasePath, responseWriter); err != nil {
 			return err
 		}
 	}

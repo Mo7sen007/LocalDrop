@@ -11,7 +11,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func LoginHandler(c *gin.Context) {
+type AdminHandler struct {
+	services *services.AdminService
+}
+
+func NewAdminHandler(services *services.AdminService) *AdminHandler {
+	return &AdminHandler{services: services}
+}
+
+func (h *AdminHandler) LoginHandler(c *gin.Context) {
 	userName := c.PostForm("username")
 	password := c.PostForm("password")
 
@@ -21,7 +29,7 @@ func LoginHandler(c *gin.Context) {
 		return
 	}
 
-	authenticated, err := services.AuthAdmin(userName, password, adminFilePath)
+	authenticated, err := h.services.AuthAdmin(userName, password, adminFilePath)
 	if err != nil {
 		if errors.Is(err, services.ErrWrongPassword) || errors.Is(err, services.ErrUserNotFound) {
 			serverlog.Warnf("Invlaid email or password:%v", err)

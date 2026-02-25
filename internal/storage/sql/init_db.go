@@ -11,40 +11,39 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-var DB *sql.DB
-
-func Init() error {
+func Init() (*sql.DB, error) {
+	var rootFolderID = "00000000-0000-0000-0000-000000000000"
 	var err error
 	dbPath, err := paths.GetFilesPath()
 	if err != nil {
-		return fmt.Errorf("failed to get db path: %w", err)
+		return nil, fmt.Errorf("failed to get db path: %w", err)
 	}
 	dbPath += "localdrop.db"
 
 	dsn := dbPath + "?_foreign_keys=on"
-	DB, err = sql.Open("sqlite", dsn)
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
+		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	DB.SetMaxOpenConns(1)
+	db.SetMaxOpenConns(1)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	if err := DB.PingContext(ctx); err != nil {
-		return fmt.Errorf("failed to ping database: %w", err)
+	if err := db.PingContext(ctx); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
 	serverlog.Infof("SQLite database initialized: %s", dbPath)
 
-	if err := createTables(); err != nil {
-		return fmt.Errorf("failed to set up tables: %w", err)
+	if err := createTables(db, rootFolderID); err != nil {
+		return nil, fmt.Errorf("failed to set up tables: %w", err)
 	}
-	return nil
+	return db, nil
 }
 
-func createTables() error {
+func createTables(db *sql.DB, rootFolderID string) error {
 	query := `
     CREATE TABLE IF NOT EXISTS folders (
         id TEXT PRIMARY KEY,
@@ -76,7 +75,7 @@ func createTables() error {
 		password TEXT NOT NULL,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);`
-	_, err := DB.Exec(query)
+	_, err := db.Exec(query)
 	if err != nil {
 		return err
 	}
@@ -86,7 +85,7 @@ func createTables() error {
 		return err
 	}
 	insertRootQuery := `INSERT INTO folders (id, name, pin_code, path) VALUES (?, 'Root', NULL,?) ON CONFLICT(id) DO NOTHING;`
-	_, err = DB.Exec(insertRootQuery, RootFolderID, rootPath)
+	_, err = db.Exec(insertRootQuery, rootFolderID, rootPath)
 	if err != nil {
 		return err
 	}

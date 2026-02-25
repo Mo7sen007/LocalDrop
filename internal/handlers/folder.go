@@ -8,12 +8,19 @@ import (
 	"github.com/Mo7sen007/LocalDrop/internal/dto"
 	"github.com/Mo7sen007/LocalDrop/internal/services"
 	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
-	"github.com/Mo7sen007/LocalDrop/internal/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
-func DownloadFolderHandler(c *gin.Context) {
+type FolderHandler struct {
+	services *services.FolderService
+}
+
+func NewFolderHandler(services *services.FolderService) *FolderHandler {
+	return &FolderHandler{services: services}
+}
+
+func (h *FolderHandler) DownloadFolderHandler(c *gin.Context) {
 	folderIDStr := c.Param("id")
 	pinCode := c.Query("pin")
 	folderId, err := uuid.Parse(folderIDStr)
@@ -22,7 +29,7 @@ func DownloadFolderHandler(c *gin.Context) {
 		return
 	}
 
-	folder, err := storage.GetFolder(folderId)
+	folder, err := h.services.GetFolderByID(folderId)
 	if err != nil {
 		c.String(http.StatusNotFound, "Folder not found")
 		return
@@ -46,28 +53,28 @@ func DownloadFolderHandler(c *gin.Context) {
 	zipWriter := zip.NewWriter(c.Writer)
 	defer zipWriter.Close()
 
-	if err := services.CreateFolderZip(folder, "", c.Writer); err != nil {
+	if err := h.services.CreateFolderZip(folder, "", c.Writer); err != nil {
 		serverlog.Errorf("Error creating zip: %v", err)
 		return
 	}
 }
 
-func DeleteFolderHandler(c *gin.Context) {
+func (h *FolderHandler) DeleteFolderHandler(c *gin.Context) {
 	folderIDStr := c.Param("id")
 	folderId, err := uuid.Parse(folderIDStr)
 	if err != nil {
 		c.String(http.StatusBadRequest, "Invalid UUID format")
 		return
 	}
-	err = services.DeleteFolder(folderId)
+	err = h.services.DeleteFolder(folderId)
 	if err != nil {
 		c.String(http.StatusInternalServerError, fmt.Sprintf("error couldn't delete file:%v", err))
 	}
 	c.String(http.StatusOK, fmt.Sprintf("deleted folder:%s", folderIDStr))
 }
 
-func GetRootFilesAndFoldersHandler(c *gin.Context) {
-	rootFolder, err := storage.GetRoot()
+func (h *FolderHandler) GetRootFilesAndFoldersHandler(c *gin.Context) {
+	rootFolder, err := h.services.GetRootFolder()
 	if err != nil {
 		serverlog.Errorf("Failed to get root folder:%v", err)
 		c.String(http.StatusInternalServerError, "Failed to get root folder")
@@ -76,7 +83,7 @@ func GetRootFilesAndFoldersHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.CreateResponseBody(*rootFolder))
 }
 
-func GetFolderHandler(c *gin.Context) {
+func (h *FolderHandler) GetFolderHandler(c *gin.Context) {
 	folderIDStr := c.Param("id")
 	pinCode := c.Query("pin")
 	folderId, err := uuid.Parse(folderIDStr)
@@ -84,7 +91,7 @@ func GetFolderHandler(c *gin.Context) {
 		c.String(http.StatusBadRequest, "Invalid UUID format")
 		return
 	}
-	folderMeta, err := storage.GetFolder(folderId)
+	folderMeta, err := h.services.GetFolderByID(folderId)
 	if err != nil {
 		c.String(http.StatusNotFound, "Folder not found")
 		return
