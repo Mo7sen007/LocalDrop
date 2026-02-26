@@ -10,12 +10,23 @@ import (
 	"github.com/Mo7sen007/LocalDrop/internal/paths"
 	"github.com/Mo7sen007/LocalDrop/internal/services"
 	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
-	"github.com/Mo7sen007/LocalDrop/internal/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
-func parseUploadForm(c *gin.Context) (dto.UploadRequestBody, string, error) {
+type UploadHandler struct {
+	folderService *services.FolderService
+	fileService   *services.FileService
+}
+
+func NewUploadHandler(folderService *services.FolderService, fileService *services.FileService) *UploadHandler {
+	return &UploadHandler{
+		folderService: folderService,
+		fileService:   fileService,
+	}
+}
+
+func (h *UploadHandler) parseUploadForm(c *gin.Context) (dto.UploadRequestBody, string, error) {
 	var requestBody dto.UploadRequestBody
 	var basePath string
 	form, err := c.MultipartForm()
@@ -67,8 +78,8 @@ func parseUploadForm(c *gin.Context) (dto.UploadRequestBody, string, error) {
 	return requestBody, basePath, nil
 }
 
-func UploadHandler(c *gin.Context) {
-	requestBody, basePath, err := parseUploadForm(c)
+func (h *UploadHandler) UploadHandler(c *gin.Context) {
+	requestBody, basePath, err := h.parseUploadForm(c)
 	if err != nil {
 		serverlog.Warnf("upload parse error: %v", err)
 		c.String(http.StatusBadRequest, err.Error())
@@ -81,7 +92,7 @@ func UploadHandler(c *gin.Context) {
 			c.String(http.StatusBadRequest, "No file provided")
 			return
 		}
-		if err := handleSingleFile(requestBody, basePath); err != nil {
+		if err := h.handleSingleFile(requestBody, basePath); err != nil {
 			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -91,7 +102,7 @@ func UploadHandler(c *gin.Context) {
 			c.String(http.StatusBadRequest, "No files provided")
 			return
 		}
-		if err := handleMultipleFiles(requestBody, basePath); err != nil {
+		if err := h.handleMultipleFiles(requestBody, basePath); err != nil {
 			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -103,7 +114,7 @@ func UploadHandler(c *gin.Context) {
 		}
 		form, _ := c.MultipartForm()
 		pathsList := form.Value["paths"]
-		if err := services.SaveFolder(requestBody.FileHeaders, pathsList, requestBody.ParentFolderID, requestBody.PinCode, requestBody.DisplayName); err != nil {
+		if err := h.folderService.SaveFolder(requestBody.FileHeaders, pathsList, requestBody.ParentFolderID, requestBody.PinCode, requestBody.DisplayName); err != nil {
 			c.String(http.StatusInternalServerError, fmt.Sprintf("Failed to upload folder: %v", err))
 			return
 		}
@@ -125,19 +136,19 @@ func uniqueDiskName(original string) string {
 	return fmt.Sprintf("%s-%s%s", base, uuid.New().String(), ext)
 }
 
-func handleSingleFile(requestBody dto.UploadRequestBody, basePath string) error {
+func (h *UploadHandler) handleSingleFile(requestBody dto.UploadRequestBody, basePath string) error {
 	var targetDir string
 	var fileFolderID *uuid.UUID
 
 	if requestBody.ParentFolderID != nil {
-		folder, err := storage.GetFolder(*requestBody.ParentFolderID)
+		folder, err := h.folderService.GetFolderByID(*requestBody.ParentFolderID)
 		if err != nil {
 			return fmt.Errorf("folder not found: %w", err)
 		}
 		targetDir = folder.Path
 		fileFolderID = &folder.ID
 	} else {
-		rootFolder, err := storage.GetRoot()
+		rootFolder, err := h.folderService.GetRootFolder()
 		if err != nil {
 			return fmt.Errorf("no root folder available for upload: %w", err)
 		}
@@ -147,25 +158,25 @@ func handleSingleFile(requestBody dto.UploadRequestBody, basePath string) error 
 
 	fileHeader := requestBody.FileHeaders[0]
 	diskPath := filepath.Join(targetDir, uniqueDiskName(fileHeader.Filename))
-	if err := services.SaveUploadedFileAndCreateRecord(fileHeader, diskPath, requestBody.PinCode, fileFolderID, requestBody.DisplayName); err != nil {
+	if err := h.fileService.SaveUploadedFileAndCreateRecord(fileHeader, diskPath, requestBody.PinCode, fileFolderID, requestBody.DisplayName); err != nil {
 		return fmt.Errorf("save upload: %w", err)
 	}
 	return nil
 }
 
-func handleMultipleFiles(requestBody dto.UploadRequestBody, basePath string) error {
+func (h *UploadHandler) handleMultipleFiles(requestBody dto.UploadRequestBody, basePath string) error {
 	var targetDir string
 	var fileFolderID *uuid.UUID
 
 	if requestBody.ParentFolderID != nil {
-		f, err := storage.GetFolder(*requestBody.ParentFolderID)
+		f, err := h.folderService.GetFolderByID(*requestBody.ParentFolderID)
 		if err != nil {
 			return fmt.Errorf("folder not found: %w", err)
 		}
 		targetDir = f.Path
 		fileFolderID = &f.ID
 	} else {
-		rootFolder, err := storage.GetRoot()
+		rootFolder, err := h.folderService.GetRootFolder()
 		if err != nil {
 			return fmt.Errorf("no root folder available for upload: %w", err)
 		}
@@ -176,7 +187,7 @@ func handleMultipleFiles(requestBody dto.UploadRequestBody, basePath string) err
 	for _, fh := range requestBody.FileHeaders {
 		diskPath := filepath.Join(targetDir, uniqueDiskName(fh.Filename))
 
-		if err := services.SaveUploadedFileAndCreateRecord(fh, diskPath, requestBody.PinCode, fileFolderID, ""); err != nil {
+		if err := h.fileService.SaveUploadedFileAndCreateRecord(fh, diskPath, requestBody.PinCode, fileFolderID, requestBody.DisplayName); err != nil {
 			serverlog.Errorf("failed saving upload for %s: %v", fh.Filename, err)
 			continue
 		}

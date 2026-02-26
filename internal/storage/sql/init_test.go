@@ -58,7 +58,7 @@ func TestInitCreatesRootFolder(t *testing.T) {
 		t.Fatalf("failed to parse root id: %v", err)
 	}
 
-	root, err := r.GetFolder(rootID)
+	root, err := r.GetFolderByID(rootID)
 	if err != nil {
 		t.Fatalf("failed to load root folder: %v", err)
 	}

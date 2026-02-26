@@ -56,7 +56,7 @@ func (h *AdminHandler) LoginHandler(c *gin.Context) {
 
 }
 
-func LogoutHandler(c *gin.Context) {
+func (h *AdminHandler) LogoutHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	session.Clear()
 	if err := session.Save(); err != nil {

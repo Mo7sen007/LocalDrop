@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/Mo7sen007/LocalDrop/internal/handlers"
 	"github.com/Mo7sen007/LocalDrop/internal/models"
 	"github.com/Mo7sen007/LocalDrop/internal/testutil"
 )
@@ -29,8 +30,16 @@ func TestSetupRouterSetsMaxMultipartMemory(t *testing.T) {
 		c.Auth.Enabled = false
 	})
 
+	deps, cleanup := testutil.SetupStorageDeps(t)
+	t.Cleanup(cleanup)
+
 	server := &Server{config: &cfg}
-	if err := server.setupRouter(); err != nil {
+	if err := server.setupRouter(
+		handlers.NewFileHandler(deps.FileService),
+		handlers.NewFolderHandler(deps.FolderService, deps.FileService),
+		handlers.NewAdminHandler(deps.AdminService),
+		handlers.NewUploadHandler(deps.FolderService, deps.FileService),
+	); err != nil {
 		t.Fatalf("setupRouter failed: %v", err)
 	}
 
@@ -49,8 +58,16 @@ func TestSetupRouterAuthProtectsUpload(t *testing.T) {
 		c.Auth.Enabled = true
 	})
 
+	deps, cleanup := testutil.SetupStorageDeps(t)
+	t.Cleanup(cleanup)
+
 	server := &Server{config: &cfg}
-	if err := server.setupRouter(); err != nil {
+	if err := server.setupRouter(
+		handlers.NewFileHandler(deps.FileService),
+		handlers.NewFolderHandler(deps.FolderService, deps.FileService),
+		handlers.NewAdminHandler(deps.AdminService),
+		handlers.NewUploadHandler(deps.FolderService, deps.FileService),
+	); err != nil {
 		t.Fatalf("setupRouter failed: %v", err)
 	}
 

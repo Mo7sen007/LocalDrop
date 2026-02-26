@@ -58,7 +58,7 @@ func (r *SQLRepository) CreateFile(file *models.File) error {
 	return tx.Commit()
 }
 
-func (r *SQLRepository) GetFile(fileId uuid.UUID) (*models.File, error) {
+func (r *SQLRepository) GetFileByID(fileId uuid.UUID) (*models.File, error) {
 	var file models.File
 	var folderIDStr sql.NullString
 	var pin sql.NullString
@@ -118,14 +118,14 @@ func (r *SQLRepository) DeleteFile(fileId uuid.UUID) error {
 	return tx.Commit()
 }
 
-func (r *SQLRepository) GetAllFiles() ([]models.File, error) {
+func (r *SQLRepository) GetAllFiles() ([]*models.File, error) {
 	rows, err := r.db.Query(`SELECT id, folder_id, name, path, size, extension, mimetype, pin, mod_time, created_at FROM files`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var files []models.File
+	var files []*models.File
 	for rows.Next() {
 		var file models.File
 		var folderIDStr sql.NullString
@@ -140,7 +140,28 @@ func (r *SQLRepository) GetAllFiles() ([]models.File, error) {
 		if pin.Valid {
 			file.Pin = &pin.String
 		}
-		files = append(files, file)
+		files = append(files, &file)
 	}
 	return files, nil
+}
+
+func (r *SQLRepository) UpdateFile(fileID uuid.UUID, newFile models.File) error {
+	query := `UPDATE files SET name = ?, path = ?, folder_id = ?, pin = ? WHERE id = ?`
+
+	var folderID interface{}
+	if newFile.FolderID != nil {
+		folderID = newFile.FolderID.String()
+	} else {
+		folderID = r.RootFolderID
+	}
+
+	var pin interface{}
+	if newFile.Pin != nil {
+		pin = *newFile.Pin
+	} else {
+		pin = nil
+	}
+
+	_, err := r.db.Exec(query, newFile.Name, newFile.Path, folderID, pin, fileID.String())
+	return err
 }

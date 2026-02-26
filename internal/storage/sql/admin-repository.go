@@ -65,7 +65,7 @@ func (r *SQLRepository) UpdateAdmin(admin *models.Admin) error {
 	return ctx.Commit()
 }
 
-func (r *SQLRepository) DeleteAdmin(username string) error {
+func (r *SQLRepository) DeleteAdminByUsername(username string) error {
 	if username == "" {
 		return fmt.Errorf("admin username is required")
 	}
@@ -128,4 +128,19 @@ func (r *SQLRepository) GetAllAdmins() ([]models.Admin, error) {
 		admins = append(admins, admin)
 	}
 	return admins, nil
+}
+
+func (r *SQLRepository) GetAdminByID(id uuid.UUID) (*models.Admin, error) {
+	var admin models.Admin
+	var idStr string
+
+	query := `SELECT id, user_name, password, created_at FROM admins WHERE id = ?`
+	if err := r.db.QueryRow(query, id.String()).Scan(&idStr, &admin.Username, &admin.PasswordHash, &admin.CreatedAt); err != nil {
+		return nil, err
+	}
+	if idStr != "" {
+		admin.ID = uuid.MustParse(idStr)
+	}
+
+	return &admin, nil
 }

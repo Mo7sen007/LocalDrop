@@ -15,7 +15,6 @@ import (
 	"github.com/Mo7sen007/LocalDrop/internal/paths"
 	"github.com/Mo7sen007/LocalDrop/internal/services"
 	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
-	"github.com/Mo7sen007/LocalDrop/internal/storage"
 	storagesql "github.com/Mo7sen007/LocalDrop/internal/storage/sql"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -34,6 +33,7 @@ type Server struct {
 	folderHandler *handlers.FolderHandler
 	fileHandler   *handlers.FileHandler
 	adminHandler  *handlers.AdminHandler
+	uploadHandler *handlers.UploadHandler
 }
 
 func NewServer(port *int, authEnabled *bool, loggingLevel *string) (*Server, error) {
@@ -117,7 +117,7 @@ func getGinMod() string {
 	return gin.DebugMode
 }
 
-func (s *Server) setupRouter() error {
+func (s *Server) setupRouter(fileHandler *handlers.FileHandler, folderHandler *handlers.FolderHandler, adminHandler *handlers.AdminHandler, uploadHandler *handlers.UploadHandler) error {
 
 	gin.SetMode(getGinMod())
 
@@ -151,35 +151,27 @@ func (s *Server) setupRouter() error {
 		c.FileFromFS("html/login.html", http.FS(staticSubFS))
 	})
 
-	s.router.GET("/rootfilesandfolders", handlers.GetRootFilesAndFoldersHandler)
-	s.router.GET("/folder/content/:id", handlers.GetFolderHandler)
+	s.router.GET("/rootfilesandfolders", folderHandler.GetRootFilesAndFoldersHandler)
+	s.router.GET("/folder/content/:id", folderHandler.GetFolderHandler)
 
-	s.router.GET("/listOfFiles", func(c *gin.Context) {
-		rootFolder, err := storage.GetRoot()
-		if err != nil {
-			serverlog.Errorf("Failed to load files: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, rootFolder)
-	})
+	s.router.GET("/listOfFiles", folderHandler.GetRootFolderHandler)
 
-	s.router.POST("/login", handlers.LoginHandler)
-	s.router.POST("/logout", handlers.LogoutHandler)
-	s.router.GET("/download/:id", handlers.DownloadFileHandler)
-	s.router.GET("/download-folder/:id", handlers.DownloadFolderHandler)
+	s.router.POST("/login", adminHandler.LoginHandler)
+	s.router.POST("/logout", adminHandler.LogoutHandler)
+	s.router.GET("/download/:id", fileHandler.DownloadFileHandler)
+	s.router.GET("/download-folder/:id", folderHandler.DownloadFolderHandler)
 
 	if s.config.Auth.Enabled {
 		authGroup := s.router.Group("/", middleware.AuthMiddleware())
-		setupProtectedRoutes(authGroup)
+		setupProtectedRoutes(authGroup, fileHandler, folderHandler, adminHandler, uploadHandler)
 	} else {
-		setupProtectedRoutes(s.router.Group("/"))
+		setupProtectedRoutes(s.router.Group("/"), fileHandler, folderHandler, adminHandler, uploadHandler)
 	}
 
 	return nil
 }
 
-func setupProtectedRoutes(group *gin.RouterGroup) {
+func setupProtectedRoutes(group *gin.RouterGroup, fileHandler *handlers.FileHandler, folderHandler *handlers.FolderHandler, adminHandler *handlers.AdminHandler, uploadHandler *handlers.UploadHandler) {
 	staticSubFS, _ := fs.Sub(staticFS, "static")
 	group.GET("/dashboard", func(c *gin.Context) {
 		c.FileFromFS("html/dashboard.html", http.FS(staticSubFS))
@@ -193,9 +185,9 @@ func setupProtectedRoutes(group *gin.RouterGroup) {
 		c.FileFromFS("html/dashboard.html", http.FS(staticSubFS))
 	})
 
-	group.POST("/upload", handlers.UploadHandler)
-	group.DELETE("/delete/file/:id", handlers.DeleteFileHandler)
-	group.DELETE("/delete/folder/:id", handlers.DeleteFolderHandler)
+	group.POST("/upload", uploadHandler.UploadHandler)
+	group.DELETE("/delete/file/:id", fileHandler.DeleteFileHandler)
+	group.DELETE("/delete/folder/:id", folderHandler.DeleteFolderHandler)
 
 	group.GET("/config/api", handlers.GetConfig)
 	group.PUT("/config/api", handlers.UpdateConfig)
@@ -257,7 +249,6 @@ func (s *Server) Init() error {
 	}
 	// keep db open for server lifetime (close on shutdown)
 	repo := storagesql.NewSQLRepository(db)
-	fileRepo := 
 
 	// construct services using interfaces and the single concrete repo
 	fileSvc := services.NewFileService(repo)
@@ -268,9 +259,10 @@ func (s *Server) Init() error {
 	s.folderHandler = handlers.NewFolderHandler(folderSvc, fileSvc)
 	s.fileHandler = handlers.NewFileHandler(fileSvc)
 	s.adminHandler = handlers.NewAdminHandler(adminSvc)
+	s.uploadHandler = handlers.NewUploadHandler(folderSvc, fileSvc)
 
 	// Setup router, mDNS, etc.
-	if err := s.setupRouter(); err != nil {
+	if err := s.setupRouter(s.fileHandler, s.folderHandler, s.adminHandler, s.uploadHandler); err != nil {
 		return fmt.Errorf("failed to setup router: %w", err)
 	}
 

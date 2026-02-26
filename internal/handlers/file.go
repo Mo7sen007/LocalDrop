@@ -3,7 +3,6 @@ package handlers
 import (
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/Mo7sen007/LocalDrop/internal/services"
 	"github.com/Mo7sen007/LocalDrop/internal/services/serverlog"
@@ -67,12 +66,6 @@ func (h *FileHandler) DeleteFileHandler(c *gin.Context) {
 	if !found {
 		serverlog.Warnf("File not found")
 		c.String(http.StatusNotFound, "File not found")
-		return
-	}
-	err = os.Remove(file.Path)
-	if err != nil {
-		serverlog.Errorf("Error deleting file:%v", err)
-		c.String(http.StatusInternalServerError, "Error deleting file")
 		return
 	}
 

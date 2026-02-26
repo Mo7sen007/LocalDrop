@@ -40,12 +40,22 @@ func (s *FolderService) DeleteFolder(folderID uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-	err = s.repo.DeleteFolder(folderID.String())
+	err = s.repo.DeleteFolder(folderID)
 	if err != nil {
 		return fmt.Errorf("error deleting folder from repository: %v", err)
 	}
 	return nil
 
+}
+
+func (s *FolderService) GetRootFolderContent() ([]models.File, []models.Folder, error) {
+	folder, err := s.repo.GetRoot()
+	if err != nil {
+		return nil, nil, fmt.Errorf("error fetching root folder: %w", err)
+	}
+	files := folder.Files
+	subFolders := folder.SubFolder
+	return files, subFolders, nil
 }
 
 func (s *FolderService) GetFolderContentByID(folderID uuid.UUID) ([]models.File, []models.Folder, error) {

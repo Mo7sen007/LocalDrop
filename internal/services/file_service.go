@@ -34,7 +34,7 @@ func (s *FileService) GetAllFiles() []*models.File {
 
 func (s *FileService) GetFileByID(id uuid.UUID) (*models.File, bool) {
 
-	file, err := s.repo.GetFileByID(id.String())
+	file, err := s.repo.GetFileByID(id)
 	if err != nil {
 		return nil, false
 	}
@@ -62,7 +62,7 @@ func (s *FileService) DeleteFile(fileID uuid.UUID) error {
 		return fmt.Errorf("error deleting file from disk: %w", err)
 	}
 
-	err = s.repo.DeleteFile(fileID.String())
+	err = s.repo.DeleteFile(fileID)
 	if err != nil {
 		return fmt.Errorf("error deleting file from database: %w", err)
 	}

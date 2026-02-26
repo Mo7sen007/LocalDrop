@@ -48,7 +48,7 @@ func (r *SQLRepository) CreateFolder(folder *models.Folder) error {
 	return tx.Commit()
 }
 
-func (r *SQLRepository) UpdateFolder(newFolder models.Folder, folderID uuid.UUID) error {
+func (r *SQLRepository) UpdateFolder(newFolder *models.Folder, folderID uuid.UUID) error {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return err
@@ -125,7 +125,7 @@ func (r *SQLRepository) GetFolderByNameAndParent(name string, parentID *uuid.UUI
 	return &folder, nil
 }
 
-func (r *SQLRepository) GetFolder(folderId uuid.UUID) (*models.Folder, error) {
+func (r *SQLRepository) GetFolderByID(folderId uuid.UUID) (*models.Folder, error) {
 	var folder models.Folder
 	var parentIDStr sql.NullString
 	var pinCode sql.NullString
@@ -147,7 +147,19 @@ func (r *SQLRepository) GetFolder(folderId uuid.UUID) (*models.Folder, error) {
 		folder.PinCode = &pinCode.String
 	}
 
-	folder.SubFolder, err = r.GetSubFolders(folderId)
+	subFoldersPtr, err := r.GetSubFolders(folderId)
+	if err != nil {
+		return nil, err
+	}
+	subFolders := make([]models.Folder, 0, len(subFoldersPtr))
+	for _, sf := range subFoldersPtr {
+		if sf != nil {
+			subFolders = append(subFolders, *sf)
+		}
+	}
+	folder.SubFolder = subFolders
+
+	folder.Files, err = r.getFolderFiles(folderId)
 	if err != nil {
 		return nil, err
 	}
@@ -186,14 +198,14 @@ func (r *SQLRepository) DeleteFolder(folderId uuid.UUID) error {
 }
 
 // Helper to get subfolders
-func (r *SQLRepository) GetSubFolders(parentID uuid.UUID) ([]models.Folder, error) {
+func (r *SQLRepository) GetSubFolders(parentID uuid.UUID) ([]*models.Folder, error) {
 	rows, err := r.db.Query(`SELECT id, name, path, pin_code, created_at, size FROM folders WHERE parent_id = ?`, parentID.String())
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var folders []models.Folder
+	var folders []*models.Folder
 	for rows.Next() {
 		var folder models.Folder
 		var pinCode sql.NullString
@@ -203,7 +215,7 @@ func (r *SQLRepository) GetSubFolders(parentID uuid.UUID) ([]models.Folder, erro
 		if pinCode.Valid {
 			folder.PinCode = &pinCode.String
 		}
-		folders = append(folders, folder)
+		folders = append(folders, &folder)
 	}
 	return folders, nil
 }

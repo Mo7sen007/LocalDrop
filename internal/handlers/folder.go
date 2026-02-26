@@ -13,11 +13,23 @@ import (
 )
 
 type FolderHandler struct {
-	services *services.FolderService
+	services    *services.FolderService
+	fileService *services.FileService
 }
 
-func NewFolderHandler(services *services.FolderService) *FolderHandler {
-	return &FolderHandler{services: services}
+func NewFolderHandler(services *services.FolderService, fileService *services.FileService) *FolderHandler {
+	return &FolderHandler{services: services,
+		fileService: fileService}
+}
+
+func (h *FolderHandler) GetRootFolderHandler(c *gin.Context) {
+	rootFolder, err := h.services.GetRootFolder()
+	if err != nil {
+		serverlog.Errorf("Failed to get root folder:%v", err)
+		c.String(http.StatusInternalServerError, "Failed to get root folder")
+		return
+	}
+	c.JSON(http.StatusOK, dto.CreateResponseBody(*rootFolder))
 }
 
 func (h *FolderHandler) DownloadFolderHandler(c *gin.Context) {

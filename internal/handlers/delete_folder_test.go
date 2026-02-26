@@ -10,15 +10,16 @@ import (
 
 	"github.com/Mo7sen007/LocalDrop/internal/models"
 	"github.com/Mo7sen007/LocalDrop/internal/paths"
-	"github.com/Mo7sen007/LocalDrop/internal/storage"
 	"github.com/Mo7sen007/LocalDrop/internal/testutil"
 	"github.com/google/uuid"
 )
 
 func TestDeleteFolderHandlerInvalidUUID(t *testing.T) {
 	testutil.ResetStorage(t)
+	deps, cleanup := newHandlerDeps(t)
+	t.Cleanup(cleanup)
 
-	router := newTestRouter(false)
+	router := newTestRouter(false, deps.uploadHandler.UploadHandler, deps.fileHandler.DeleteFileHandler, deps.folderHandler.DeleteFolderHandler)
 	req := httptest.NewRequest(http.MethodDelete, "/delete/folder/not-a-uuid", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -30,6 +31,8 @@ func TestDeleteFolderHandlerInvalidUUID(t *testing.T) {
 
 func TestDeleteFolderHandlerSuccess(t *testing.T) {
 	testutil.ResetStorage(t)
+	deps, cleanup := newHandlerDeps(t)
+	t.Cleanup(cleanup)
 
 	filesPath, err := paths.GetFilesPath()
 	if err != nil {
@@ -49,11 +52,11 @@ func TestDeleteFolderHandlerSuccess(t *testing.T) {
 		CreatedAt: time.Now(),
 	}
 
-	if err := storage.CreateFolder(&folder); err != nil {
+	if err := deps.repo.CreateFolder(&folder); err != nil {
 		t.Fatalf("failed to create folder record: %v", err)
 	}
 
-	router := newTestRouter(false)
+	router := newTestRouter(false, deps.uploadHandler.UploadHandler, deps.fileHandler.DeleteFileHandler, deps.folderHandler.DeleteFolderHandler)
 	req := httptest.NewRequest(http.MethodDelete, "/delete/folder/"+folderID.String(), nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -66,7 +69,7 @@ func TestDeleteFolderHandlerSuccess(t *testing.T) {
 		t.Fatalf("expected folder to be deleted from disk")
 	}
 
-	if _, err := storage.GetFolder(folderID); err == nil {
+	if _, err := deps.repo.GetFolderByID(folderID); err == nil {
 		t.Fatalf("expected folder record to be deleted")
 	}
 }

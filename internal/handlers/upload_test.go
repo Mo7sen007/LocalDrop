@@ -10,7 +10,6 @@ import (
 
 	"github.com/Mo7sen007/LocalDrop/internal/models"
 	"github.com/Mo7sen007/LocalDrop/internal/services"
-	"github.com/Mo7sen007/LocalDrop/internal/storage"
 	"github.com/Mo7sen007/LocalDrop/internal/testutil"
 )
 
@@ -45,7 +44,10 @@ func buildMultipart(t *testing.T, fields map[string]string, fileField, fileName 
 func TestUploadHandlerRequiresAuth(t *testing.T) {
 	testutil.ResetStorage(t)
 
-	router := newTestRouter(true)
+	deps, cleanup := newHandlerDeps(t)
+	t.Cleanup(cleanup)
+
+	router := newTestRouter(true, deps.uploadHandler.UploadHandler, deps.fileHandler.DeleteFileHandler, deps.folderHandler.DeleteFolderHandler)
 
 	req := httptest.NewRequest(http.MethodPost, "/upload", nil)
 	rec := httptest.NewRecorder()
@@ -66,7 +68,10 @@ func TestUploadHandlerFileSuccess(t *testing.T) {
 		cfg.Storage.MaxFileSize = 10 << 20
 	})
 
-	router := newTestRouter(false)
+	deps, cleanup := newHandlerDeps(t)
+	t.Cleanup(cleanup)
+
+	router := newTestRouter(false, deps.uploadHandler.UploadHandler, deps.fileHandler.DeleteFileHandler, deps.folderHandler.DeleteFolderHandler)
 
 	body, contentType := buildMultipart(t, map[string]string{
 		"contentType":  "file",
@@ -84,10 +89,7 @@ func TestUploadHandlerFileSuccess(t *testing.T) {
 		t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
 	}
 
-	files, err := storage.GetAllFiles()
-	if err != nil {
-		t.Fatalf("failed to get files: %v", err)
-	}
+	files := deps.fileService.GetAllFiles()
 	if len(files) != 1 {
 		t.Fatalf("expected 1 file, got %d", len(files))
 	}
@@ -107,8 +109,10 @@ func TestUploadHandlerFileSuccess(t *testing.T) {
 
 func TestUploadHandlerMissingContentType(t *testing.T) {
 	testutil.ResetStorage(t)
+	deps, cleanup := newHandlerDeps(t)
+	t.Cleanup(cleanup)
 
-	router := newTestRouter(false)
+	router := newTestRouter(false, deps.uploadHandler.UploadHandler, deps.fileHandler.DeleteFileHandler, deps.folderHandler.DeleteFolderHandler)
 
 	body, contentType := buildMultipart(t, map[string]string{}, "files", "hello.txt", []byte("hello"))
 	req := httptest.NewRequest(http.MethodPost, "/upload", body)

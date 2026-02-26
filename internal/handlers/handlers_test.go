@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/Mo7sen007/LocalDrop/internal/middleware"
+	"github.com/Mo7sen007/LocalDrop/internal/services"
+	storagesql "github.com/Mo7sen007/LocalDrop/internal/storage/sql"
 	"github.com/Mo7sen007/LocalDrop/internal/testutil"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -24,7 +26,30 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func newTestRouter(authEnabled bool) *gin.Engine {
+type handlerDeps struct {
+	repo          *storagesql.SQLRepository
+	fileService   *services.FileService
+	folderService *services.FolderService
+	fileHandler   *FileHandler
+	folderHandler *FolderHandler
+	uploadHandler *UploadHandler
+}
+
+func newHandlerDeps(t *testing.T) (*handlerDeps, func()) {
+	t.Helper()
+
+	deps, cleanup := testutil.SetupStorageDeps(t)
+	return &handlerDeps{
+		repo:          deps.Repo,
+		fileService:   deps.FileService,
+		folderService: deps.FolderService,
+		fileHandler:   NewFileHandler(deps.FileService),
+		folderHandler: NewFolderHandler(deps.FolderService, deps.FileService),
+		uploadHandler: NewUploadHandler(deps.FolderService, deps.FileService),
+	}, cleanup
+}
+
+func newTestRouter(authEnabled bool, uploadHandler gin.HandlerFunc, deleteFileHandler gin.HandlerFunc, deleteFolderHandler gin.HandlerFunc) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
@@ -42,9 +67,9 @@ func newTestRouter(authEnabled bool) *gin.Engine {
 		group = router.Group("/", middleware.AuthMiddleware())
 	}
 
-	group.POST("/upload", UploadHandler)
-	group.DELETE("/delete/file/:id", DeleteFileHandler)
-	group.DELETE("/delete/folder/:id", DeleteFolderHandler)
+	group.POST("/upload", uploadHandler)
+	group.DELETE("/delete/file/:id", deleteFileHandler)
+	group.DELETE("/delete/folder/:id", deleteFolderHandler)
 
 	return router
 }
