@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"crypto/rand"
 	"embed"
 	"fmt"
 	"io/fs"
@@ -70,15 +69,6 @@ func NewServer(port *int, authEnabled *bool, loggingLevel *string) (*Server, err
 
 //helper functions for setupRouter()
 
-func generateSecretKey() []byte {
-	key := make([]byte, 32)
-	if _, err := rand.Read(key); err != nil {
-		serverlog.Errorf("Failed to generate secret key: %v", err)
-		return nil
-	}
-	return key
-}
-
 func getSecretKey() []byte {
 	if key, ok := config.GetString("SESSION_SECRET"); ok {
 		return []byte(key)
@@ -91,7 +81,12 @@ func getSecretKey() []byte {
 
 	if config.GetBoolDefault("SESSION_SECRET_RANDOM", false) {
 		serverlog.Warnf("SESSION_SECRET_RANDOM=true; using a random per-start session secret")
-		return generateSecretKey()
+		key, err := services.GenerateSessionKey()
+		if err != nil {
+			serverlog.Errorf("Failed to generate random session secret: %v", err)
+			return nil
+		}
+		return key
 	}
 
 	serverlog.Warnf("SESSION_SECRET not set; using an insecure default dev session secret")
@@ -247,15 +242,13 @@ func (s *Server) Init() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize storage: %w", err)
 	}
-	// keep db open for server lifetime (close on shutdown)
+
 	repo := storagesql.NewSQLRepository(db)
 
-	// construct services using interfaces and the single concrete repo
 	fileSvc := services.NewFileService(repo)
 	folderSvc := services.NewFolderService(repo, repo, fileSvc)
 	adminSvc := services.NewAdminService(repo)
 
-	// construct handlers/controllers with services
 	s.folderHandler = handlers.NewFolderHandler(folderSvc, fileSvc)
 	s.fileHandler = handlers.NewFileHandler(fileSvc)
 	s.adminHandler = handlers.NewAdminHandler(adminSvc)

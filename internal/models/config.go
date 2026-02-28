@@ -6,9 +6,16 @@ import (
 
 type Config struct {
 	App     AppConfig     `yaml:"server" json:"server"`
+	TLS     TLSConfig     `yaml:"tls" json:"tls"`
 	Storage StorageConfig `yaml:"storage" json:"storage"`
 	Auth    AuthConfig    `yaml:"auth" json:"auth"`
 	Logging LoggingConfig `yaml:"logging" json:"logging"`
+}
+
+type TLSConfig struct {
+	Enabled  bool   `yaml:"tls_enabled" json:"tls_enabled"`
+	CertFile string `yaml:"cert_file" json:"cert_file"`
+	KeyFile  string `yaml:"key_file" json:"key_file"`
 }
 
 type AppConfig struct {
