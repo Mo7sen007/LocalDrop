@@ -31,7 +31,6 @@ func (r *SQLRepository) CreateFile(file *models.File) error {
 	if err != nil {
 		return err
 	}
-
 	_, err = tx.Exec(query,
 		file.ID.String(),
 		folderID,
@@ -146,6 +145,10 @@ func (r *SQLRepository) GetAllFiles() ([]*models.File, error) {
 }
 
 func (r *SQLRepository) UpdateFile(fileID uuid.UUID, newFile models.File) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
 	query := `UPDATE files SET name = ?, path = ?, folder_id = ?, pin = ? WHERE id = ?`
 
 	var folderID interface{}
@@ -162,6 +165,10 @@ func (r *SQLRepository) UpdateFile(fileID uuid.UUID, newFile models.File) error 
 		pin = nil
 	}
 
-	_, err := r.db.Exec(query, newFile.Name, newFile.Path, folderID, pin, fileID.String())
-	return err
+	_, err = tx.Exec(query, newFile.Name, newFile.Path, folderID, pin, fileID.String())
+	if err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	return tx.Commit()
 }

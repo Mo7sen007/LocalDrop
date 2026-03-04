@@ -109,24 +109,33 @@ func (r *SQLRepository) GetAdminByUsername(username string) (*models.Admin, erro
 }
 
 func (r *SQLRepository) GetAllAdmins() ([]models.Admin, error) {
+
 	rows, err := r.db.Query(`SELECT id, user_name, password, created_at FROM admins ORDER BY created_at DESC`)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get all admins: %w", err)
 	}
 	defer rows.Close()
 
 	var admins []models.Admin
 	for rows.Next() {
 		var admin models.Admin
-		var idStr string
+		var idStr sql.NullString
 		if err := rows.Scan(&idStr, &admin.Username, &admin.PasswordHash, &admin.CreatedAt); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan admin: %w", err)
 		}
-		if idStr != "" {
-			admin.ID = uuid.MustParse(idStr)
+		if idStr.Valid && idStr.String != "" {
+			u, err := uuid.Parse(idStr.String)
+			if err != nil {
+				return nil, fmt.Errorf("parse admin id: %w", err)
+			}
+			admin.ID = u
 		}
 		admins = append(admins, admin)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows error: %w", err)
+	}
+
 	return admins, nil
 }
 

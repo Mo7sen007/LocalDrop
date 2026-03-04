@@ -42,6 +42,7 @@ func (r *SQLRepository) CreateFolder(folder *models.Folder) error {
 		folder.Size,
 		parentID,
 	); err != nil {
+		_ = tx.Rollback()
 		return err
 	}
 
@@ -83,6 +84,7 @@ func (r *SQLRepository) UpdateFolder(newFolder *models.Folder, folderID uuid.UUI
 		parentID,
 		folderID.String(),
 	); err != nil {
+		_ = tx.Rollback()
 		return err
 	}
 
@@ -90,6 +92,7 @@ func (r *SQLRepository) UpdateFolder(newFolder *models.Folder, folderID uuid.UUI
 }
 
 func (r *SQLRepository) GetFolderByNameAndParent(name string, parentID *uuid.UUID) (*models.Folder, error) {
+
 	var folder models.Folder
 	var pinCode sql.NullString
 	var parentIDStr sql.NullString
@@ -187,10 +190,12 @@ func (r *SQLRepository) DeleteFolder(folderId uuid.UUID) error {
 	pathPrefix := folderPath + string(os.PathSeparator) + "%"
 
 	if _, err := tx.Exec("DELETE FROM files WHERE path LIKE ?", pathPrefix); err != nil {
+		tx.Rollback()
 		return err
 	}
 
 	if _, err := tx.Exec("DELETE FROM folders WHERE path LIKE ? OR id = ?", pathPrefix, folderId.String()); err != nil {
+		tx.Rollback()
 		return err
 	}
 
