@@ -80,7 +80,8 @@ func (h *FolderHandler) DeleteFolderHandler(c *gin.Context) {
 	}
 	err = h.services.DeleteFolder(folderId)
 	if err != nil {
-		c.String(http.StatusInternalServerError, fmt.Sprintf("error couldn't delete file:%v", err))
+		serverlog.Errorf("Error deleting folder with ID:%s, error:%v", folderIDStr, err)
+		c.String(http.StatusInternalServerError, fmt.Sprintf("error couldn't delete folder with id:%s", folderIDStr))
 	}
 	c.String(http.StatusOK, fmt.Sprintf("deleted folder:%s", folderIDStr))
 }
@@ -100,11 +101,13 @@ func (h *FolderHandler) GetFolderHandler(c *gin.Context) {
 	pinCode := c.Query("pin")
 	folderId, err := uuid.Parse(folderIDStr)
 	if err != nil {
+		serverlog.Errorf("Invalid UUID format:%v", err)
 		c.String(http.StatusBadRequest, "Invalid UUID format")
 		return
 	}
 	folderMeta, err := h.services.GetFolderByID(folderId)
 	if err != nil {
+		serverlog.Errorf("Folder not found with ID:%s, error:%v", folderIDStr, err)
 		c.String(http.StatusNotFound, "Folder not found")
 		return
 	}
@@ -115,6 +118,7 @@ func (h *FolderHandler) GetFolderHandler(c *gin.Context) {
 		}
 		verified := services.CheckPasswordHash(pinCode, *folderMeta.PinCode)
 		if !verified {
+			serverlog.Warnf("Incorrect PIN code for folder ID:%s", folderIDStr)
 			c.String(http.StatusUnauthorized, "Incorrect PIN code")
 			return
 		}

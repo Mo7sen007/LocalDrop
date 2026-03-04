@@ -31,6 +31,7 @@ func (h *UploadHandler) parseUploadForm(c *gin.Context) (dto.UploadRequestBody, 
 	var basePath string
 	form, err := c.MultipartForm()
 	if err != nil {
+		serverlog.Errorf("Error parsing multipart form: %v", err)
 		return dto.UploadRequestBody{}, "", fmt.Errorf("multipart form: %w", err)
 	}
 
@@ -81,46 +82,54 @@ func (h *UploadHandler) parseUploadForm(c *gin.Context) (dto.UploadRequestBody, 
 func (h *UploadHandler) UploadHandler(c *gin.Context) {
 	requestBody, basePath, err := h.parseUploadForm(c)
 	if err != nil {
-		serverlog.Warnf("upload parse error: %v", err)
-		c.String(http.StatusBadRequest, err.Error())
+		serverlog.Errorf("Failed to parse upload form: %v", err)
+		c.String(http.StatusBadRequest, "Error parsing upload form")
 		return
 	}
 
 	switch requestBody.ContentType {
 	case "file":
 		if len(requestBody.FileHeaders) == 0 {
+			serverlog.Warnf("No file provided in upload request")
 			c.String(http.StatusBadRequest, "No file provided")
 			return
 		}
 		if err := h.handleSingleFile(requestBody, basePath); err != nil {
-			c.String(http.StatusInternalServerError, err.Error())
+			serverlog.Errorf("Failed to upload file: %v", err)
+			c.String(http.StatusInternalServerError, "Error uploading file")
 			return
 		}
 		c.String(http.StatusOK, "File uploaded successfully!")
 	case "files":
 		if len(requestBody.FileHeaders) == 0 {
+			serverlog.Warnf("No files provided in upload request")
 			c.String(http.StatusBadRequest, "No files provided")
 			return
 		}
 		if err := h.handleMultipleFiles(requestBody, basePath); err != nil {
-			c.String(http.StatusInternalServerError, err.Error())
+			serverlog.Errorf("Failed to upload files: %v", err)
+			c.String(http.StatusInternalServerError, "Error uploading files")
 			return
 		}
 		c.String(http.StatusOK, fmt.Sprintf("%d files uploaded successfully!", len(requestBody.FileHeaders)))
 	case "folder":
 		if len(requestBody.FileHeaders) == 0 {
+			serverlog.Warnf("No files provided in upload request")
 			c.String(http.StatusBadRequest, "No files provided")
 			return
 		}
 		form, _ := c.MultipartForm()
 		pathsList := form.Value["paths"]
 		if err := h.folderService.SaveFolder(requestBody.FileHeaders, pathsList, requestBody.ParentFolderID, requestBody.PinCode, requestBody.DisplayName); err != nil {
-			c.String(http.StatusInternalServerError, fmt.Sprintf("Failed to upload folder: %v", err))
+			serverlog.Errorf("Failed to upload folder: %v", err)
+			c.String(http.StatusInternalServerError, "Error uploading folder")
 			return
 		}
+		serverlog.Infof("Folder uploaded successfully with %d files", len(requestBody.FileHeaders))
 		c.String(http.StatusOK, fmt.Sprintf("Folder uploaded successfully with %d files!", len(requestBody.FileHeaders)))
 	default:
-		c.String(http.StatusBadRequest, "Invalid upload type: %s", requestBody.ContentType)
+		serverlog.Warnf("Invalid upload type: %s", requestBody.ContentType)
+		c.String(http.StatusBadRequest, "Invalid upload type, must be 'file', 'files', or 'folder'")
 	}
 }
 

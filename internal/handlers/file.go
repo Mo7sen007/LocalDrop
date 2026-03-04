@@ -45,6 +45,7 @@ func (h *FileHandler) DownloadFileHandler(c *gin.Context) {
 
 		verified := services.CheckPasswordHash(pinCode, *file.Pin)
 		if !verified {
+			serverlog.Warnf("Incorrect PIN code for file ID:%s", fileIdStr)
 			c.String(http.StatusUnauthorized, "Incorrect PIN code")
 			return
 		}
@@ -58,7 +59,7 @@ func (h *FileHandler) DeleteFileHandler(c *gin.Context) {
 	fileIdStr := c.Param("id")
 	fileId, err := uuid.Parse(fileIdStr)
 	if err != nil {
-		serverlog.Warnf("Invalid UUID format:%v", err)
+		serverlog.Errorf("Invalid UUID format:%v", err)
 		c.String(http.StatusBadRequest, "Invalid UUID format")
 		return
 	}
@@ -71,7 +72,7 @@ func (h *FileHandler) DeleteFileHandler(c *gin.Context) {
 
 	err = h.services.DeleteFile(fileId)
 	if err != nil {
-		serverlog.Errorf("Error deleting file from db:%v", err)
+		serverlog.Errorf("Error deleting file with ID:%s, error:%v", fileIdStr, err)
 		c.String(http.StatusInternalServerError, "Error deleting file from db")
 		return
 	}
