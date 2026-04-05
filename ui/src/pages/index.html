@@ -1,0 +1,51 @@
+<page route="/" layout="">
+  <div class="page-wrapper">
+
+    <header class="hero">
+      <div class="hero-badge">v0.1.0 — experimental</div>
+      <h1 class="hero-title">TinyFX</h1>
+      <p class="hero-subtitle">
+        A minimal compile-time HTML component framework.<br>
+        HTML first. No virtual DOM. No runtime overhead.
+      </p>
+      <div class="hero-actions">
+        <a href="https://github.com/Mo7sen007/tinyfx" class="btn btn-primary">
+          <i class="fa-brands fa-github"></i> View on GitHub
+        </a>
+        <a href="#features" class="btn btn-outline">See features</a>
+      </div>
+      <ThemeToggle />
+    </header>
+
+    <section id="features" class="features">
+      <h2 class="section-title">Why TinyFX?</h2>
+      <div class="feature-grid">
+        <FeatureCard
+          icon="fa-solid fa-bolt"
+          title="Compile-time components"
+          description="Components are expanded at build time into plain HTML. Zero runtime rendering cost."
+        />
+        <FeatureCard
+          icon="fa-solid fa-feather"
+          title="Minimal runtime"
+          description="The runtime is small: signals, DOM helpers, and a typed HTTP client — nothing more."
+        />
+        <FeatureCard
+          icon="fa-solid fa-code"
+          title="HTML is the source of truth"
+          description="Structure lives in HTML files. JavaScript enhances — it does not replace."
+        />
+        <FeatureCard
+          icon="fa-solid fa-puzzle-piece"
+          title="Islands by default"
+          description="Components are static unless you opt in to dynamic behavior. Most UI costs nothing."
+        />
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>Built with TinyFX &amp; Rust. MIT licensed.</p>
+    </footer>
+
+  </div>
+</page>

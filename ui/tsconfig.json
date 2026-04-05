@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@models/*": ["src/lib/models/*"],
+      "@dto/*": ["src/lib/dto/*"],
+      "@state/*": ["src/lib/state/*"],
+      "@services/*": ["src/lib/services/*"]
+    }
+  },
+  "include": ["src"]
+}

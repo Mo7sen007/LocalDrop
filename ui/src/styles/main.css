@@ -1,0 +1,102 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  background: var(--color-bg);
+  color: var(--color-text);
+  transition: background var(--transition), color var(--transition);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:root {
+  --color-bg:          #fafafa;
+  --color-surface:     #ffffff;
+  --color-border:      #0f0f0f;
+  --color-text:        #0f0f0f;
+  --color-text-muted:  #6b7280;
+  --color-primary:     #6366f1;
+  --color-primary-fg:  #ffffff;
+  --color-accent:      #f59e0b;
+  --color-accent-fg:   #0f0f0f;
+  --color-shadow:      #0f0f0f;
+  --shadow-sm:         3px 3px 0px var(--color-shadow);
+  --shadow-md:         5px 5px 0px var(--color-shadow);
+  --shadow-lg:         8px 8px 0px var(--color-shadow);
+  --radius:            10px;
+  --border:            2px solid var(--color-border);
+  --transition:        0.2s ease;
+}
+
+[data-theme="dark"] {
+  --color-bg:          #0f0f0f;
+  --color-surface:     #1a1a1a;
+  --color-border:      #ffffff;
+  --color-text:        #ffffff;
+  --color-text-muted:  #9ca3af;
+  --color-shadow:      #ffffff;
+}
+
+.page-wrapper {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* Buttons */
+.btn {
+  font-family: Inter, system-ui, sans-serif;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.btn:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0px var(--color-shadow); }
+.btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px var(--color-shadow); }
+
+.btn-primary { background: var(--color-primary); color: var(--color-primary-fg); }
+.btn-outline { background: transparent; color: var(--color-text); }
+
+/* Hero */
+.hero { text-align: center; padding: 4rem 2rem; }
+.hero-badge { display: inline-block; background: var(--color-accent); color: var(--color-accent-fg); padding: 0.25rem 0.75rem; border-radius: 999px; box-shadow: var(--shadow-sm); margin-bottom: 1rem; }
+.hero-title { font-family: 'Press Start 2P', monospace; font-size: clamp(1.5rem, 4vw, 2.5rem); letter-spacing: 0.02em; margin: 0.5rem 0; }
+.hero-subtitle { color: var(--color-text-muted); margin-bottom: 1rem; }
+.hero-actions { display:flex; gap:1rem; flex-wrap:wrap; justify-content:center; margin:1rem 0; }
+
+/* Feature grid and cards */
+.feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+.feature-card { background: var(--color-surface); border: var(--border); border-radius: var(--radius); box-shadow: var(--shadow-md); padding: 1.5rem; transition: transform var(--transition), box-shadow var(--transition); }
+.feature-card:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0px var(--color-shadow); }
+.feature-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+.feature-title { font-weight: 600; margin: 0.25rem 0; }
+.feature-description { color: var(--color-text-muted); }
+
+/* Theme toggle */
+.theme-toggle { width: 2.5rem; height: 2.5rem; border-radius: 50%; background: var(--color-surface); border: var(--border); box-shadow: var(--shadow-sm); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; transition: transform var(--transition), box-shadow var(--transition); }
+.theme-toggle:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0px var(--color-shadow); }
+.theme-toggle:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px var(--color-shadow); }
+
+/* Footer */
+.footer { text-align:center; padding: 2rem 0; color: var(--color-text-muted); }
+
+/* Utility */
+.section-title { margin-top: 2rem; margin-bottom: 1rem; }
+

@@ -1,0 +1,15 @@
+{
+  "name": "ui",
+  "private": true,
+  "scripts": {
+    "dev": "tinyfx serve",
+    "build": "tinyfx build"
+  },
+  "dependencies": {
+    "@tinyfx/runtime": "latest"
+  },
+  "devDependencies": {
+    "esbuild": "latest",
+    "typescript": "latest"
+  }
+}

@@ -1,0 +1,18 @@
+# Source folders
+pages      = "src/pages"
+components = "src/components"
+entry_ts   = "src/main.ts"
+styles     = "src/styles"
+
+# Output
+out_dir = "dist"
+
+# Dev server
+[server]
+port = 3000
+
+# Router
+# mode = "hard": real browser page loads (default)
+# mode = "soft": JS-driven DOM swap (no full reload)
+[router]
+mode = "hard"
