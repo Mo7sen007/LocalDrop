@@ -136,6 +136,18 @@ func (s *Server) setupRouter(fileHandler *handlers.FileHandler, folderHandler *h
 	})
 	s.router.Use(sessions.Sessions("localdrop_session", store))
 
+	s.router.Use(func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Header("Access-Control-Allow-Credentials", "true")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+		c.Next()
+	})
+
 	s.router.GET("/", func(c *gin.Context) {
 		c.FileFromFS("html/download.html", http.FS(staticSubFS))
 	})

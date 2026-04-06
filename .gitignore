@@ -34,3 +34,5 @@ scripts/
 
 # Added by goreleaser init:
 dist/
+
+ui/*

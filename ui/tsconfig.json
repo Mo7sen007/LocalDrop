@@ -9,7 +9,8 @@
       "@models/*": ["src/lib/models/*"],
       "@dto/*": ["src/lib/dto/*"],
       "@state/*": ["src/lib/state/*"],
-      "@services/*": ["src/lib/services/*"]
+      "@services/*": ["src/lib/services/*"],
+      "@config": ["src/lib/config.ts"]
     }
   },
   "include": ["src"]
