@@ -1,0 +1,84 @@
+<page route="/dashboard" title="LocalDrop — Dashboard">
+  <head>
+    <meta name="description" content="Upload, manage, and share files from your LocalDrop instance.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#f8fafc">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap">
+  </head>
+  <main class="dashboard-page">
+    <div class="page-wrapper">
+      <Navbar
+        links='[{"label":"Dashboard","url":"/dashboard","active":true},{"label":"Files","url":"/","active":false},{"label":"Config","url":"/config","active":false}]'
+        show-logout="true"
+      />
+
+      <div class="content-area">
+        <header class="page-header">
+          <h2>Host Dashboard</h2>
+          <p class="page-description">Upload and manage your shared files</p>
+        </header>
+
+        <div class="dashboard-grid">
+          <section class="upload-section" aria-label="Upload file">
+            <div class="retro-card">
+              <div class="card-header">
+                <h3>Upload File</h3>
+                <svg width="1em" height="1em" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" focusable="false"><path d="M256 448V224l80 80 45-45-157-157L67 259l45 45 80-80v224zM64 32h384v64H64z"/></svg>
+              </div>
+              <div class="card-body">
+                <UploadForm data-upload-form-component />
+              </div>
+            </div>
+          </section>
+
+          <section class="files-section" aria-label="Uploaded files">
+            <div class="retro-card">
+              <div class="card-header">
+                <h3>Uploaded Files</h3>
+                <div class="card-actions">
+                  <button class="retro-btn secondary" id="refreshBtn" aria-label="Refresh file list">
+                    <svg width="1em" height="1em" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" focusable="false" class="refresh-icon"><path d="M142.9 142.9c-17.5 17.5-30.1 38-37.8 59.8c-5.9 16.7-24.2 25.4-40.8 19.5s-25.4-24.2-19.5-40.8C55.6 150.7 73.2 122 97.6 97.6c87.2-87.2 228.3-87.5 315.8-1L455 55c6.9-6.9 17.2-8.9 26.2-5.2s14.8 12.5 14.8 22.2l0 128c0 13.3-10.7 24-24 24l-8.4 0c0 0 0 0 0 0L344 224c-9.7 0-18.5-5.8-22.2-14.8s-1.7-19.3 5.2-26.2l41.1-41.1c-62.6-61.5-163.1-61.2-225.3 1zM16 312c0-13.3 10.7-24 24-24l7.6 0 .7 0L168 288c9.7 0 18.5 5.8 22.2 14.8s1.7 19.3-5.2 26.2l-41.1 41.1c62.6 61.5 163.1 61.2 225.3-1c17.5-17.5 30.1-38 37.8-59.8c5.9-16.7 24.2-25.4 40.8-19.5s25.4 24.2 19.5 40.8c-10.8 30.6-28.4 59.3-52.9 83.8c-87.2 87.2-228.3 87.5-315.8 1L57 457c-6.9 6.9-17.2 8.9-26.2 5.2S16 449.7 16 440l0-119.6 0-.7 0-7.6z"/></svg>
+                  </button>
+                  <a href="/" class="retro-btn secondary" aria-label="View download page">
+                    <svg width="1em" height="1em" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" focusable="false"><path d="M288 64h160v160h-64v-51L197 360l-45-45 187-187h-51zM96 96h128v64H160v256h256v-64h64v128H96z"/></svg>
+                  </a>
+                </div>
+              </div>
+              <div class="table-wrapper" style="content-visibility:auto;contain-intrinsic-size:0 300px">
+                <table id="fileTable">
+                  <thead>
+                    <tr>
+                      <th scope="col">Name</th>
+                      <th scope="col">Size</th>
+                      <th scope="col">Type</th>
+                      <th scope="col">Date</th>
+                      <th scope="col">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="fileTableBody">
+                  </tbody>
+                </table>
+                <div id="loadingState" class="loading" role="status" aria-label="Loading files">
+                  <div class="loading-spinner" aria-hidden="true"></div>
+                  <p>Loading files...</p>
+                </div>
+                <div id="emptyState" class="empty-state" style="display:none">
+                  <div class="empty-icon" aria-hidden="true"><svg width="1em" height="1em" viewBox="0 0 384 512" fill="currentColor" focusable="false"><path d="M320 464c8.8 0 16-7.2 16-16l0-288-80 0c-17.7 0-32-14.3-32-32l0-80L64 48c-8.8 0-16 7.2-16 16l0 384c0 8.8 7.2 16 16 16l256 0zM0 64C0 28.7 28.7 0 64 0L229.5 0c17 0 33.3 6.7 45.3 18.7l90.5 90.5c12 12 18.7 28.3 18.7 45.3L384 448c0 35.3-28.7 64-64 64L64 512c-35.3 0-64-28.7-64-64L0 64z"/></svg></div>
+                  <h4>No files uploaded yet</h4>
+                  <p>Upload your first file using the form above.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <PinModal data-pin-modal />
+      <DeleteModal data-delete-modal />
+      <ShareModal data-share-modal />
+      <Toast data-toast />
+    </div>
+  </main>
+</page>

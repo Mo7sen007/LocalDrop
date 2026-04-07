@@ -1,0 +1,27 @@
+<form class="upload-form" tinyfx-dynamic data-upload-form>
+  <div class="form-group">
+    <label>Select Content</label>
+    <UploadDropzone />
+  </div>
+
+  <details class="retro-card-sm">
+    <summary>Advanced (optional)</summary>
+    <div class="advanced-content">
+      <div class="form-group">
+        <label for="upload-fileName">File Name</label>
+        <input type="text" id="upload-fileName" class="retro-input" placeholder="Enter file name (optional)" data-display-name>
+        <small>Applies to single file or folder name (top-level)</small>
+      </div>
+      <div class="form-group">
+        <label for="upload-pinCode">PIN Protection (Optional)</label>
+        <input type="text" id="upload-pinCode" class="retro-input" placeholder="Enter PIN to protect file" maxlength="10" data-pin-code>
+        <small>Leave empty for public access</small>
+      </div>
+    </div>
+  </details>
+
+  <button type="submit" class="upload-btn retro-btn primary" data-upload-submit>
+    <span class="btn-text">Upload File</span>
+    <span class="btn-spinner" style="display:none"><svg width="1em" height="1em" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" focusable="false"><path d="M304 48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zm0 416a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM48 304a48 48 0 1 0 0-96 48 48 0 1 0 0 96zm464-48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM142.9 437A48 48 0 1 0 75 369.1 48 48 0 1 0 142.9 437zm0-294.2A48 48 0 1 0 75 75a48 48 0 1 0 67.9 67.9zM369.1 437A48 48 0 1 0 437 369.1 48 48 0 1 0 369.1 437z"/></svg></span>
+  </button>
+</form>

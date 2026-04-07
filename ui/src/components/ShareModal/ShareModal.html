@@ -1,0 +1,16 @@
+<div class="modal" tinyfx-dynamic role="dialog" aria-modal="true" aria-labelledby="share-modal-title">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="share-modal-title">Share</h3>
+      <button class="modal-close" data-action="close" aria-label="Close dialog">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="qr-container" data-qr></div>
+      <input class="retro-input share-url-input" readonly data-share-url aria-label="Share link URL">
+      <div class="modal-actions">
+        <button class="retro-btn secondary" data-action="copy">Copy Link</button>
+        <button class="retro-btn primary" data-action="native-share">Share</button>
+      </div>
+    </div>
+  </div>
+</div>

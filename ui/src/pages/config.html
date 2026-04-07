@@ -1,0 +1,38 @@
+<page route="/config" title="LocalDrop — Server Config">
+  <head>
+    <meta name="description" content="Configure your LocalDrop server settings. Update options that control file sharing, security, and behavior.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#f8fafc">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap">
+  </head>
+  <main class="config-page">
+    <div class="page-wrapper">
+      <Navbar
+        links='[{"label":"Dashboard","url":"/dashboard","active":false},{"label":"Files","url":"/","active":false},{"label":"Config","url":"/config","active":true}]'
+        show-logout="true"
+      />
+
+      <div class="content-area">
+        <header class="page-header">
+          <h2>Server Config</h2>
+          <p class="page-description">Update LocalDrop settings. Some changes require a restart.</p>
+        </header>
+
+        <section class="retro-card" aria-label="Server configuration">
+          <div class="card-header">
+            <h3>Configuration</h3>
+            <svg width="1em" height="1em" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" focusable="false"><path d="M0 416c0 17.7 14.3 32 32 32l54.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 448c17.7 0 32-14.3 32-32s-14.3-32-32-32l-246.7 0c-12.3-28.3-40.5-48-73.3-48s-61 19.7-73.3 48L32 384c-17.7 0-32 14.3-32 32zm128 0a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zM320 256a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zm32-80c-32.8 0-61 19.7-73.3 48L32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l246.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48l54.7 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-54.7 0c-12.3-28.3-40.5-48-73.3-48zM192 128a32 32 0 1 1 0-64 32 32 0 1 1 0 64zm73.3-64C253 35.7 224.8 16 192 16s-61 19.7-73.3 48L32 64C14.3 64 0 78.3 0 96s14.3 32 32 32l86.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 128c17.7 0 32-14.3 32-32s-14.3-32-32-32L265.3 64z"/></svg>
+          </div>
+          <div class="card-body">
+            <div data-alert class="retro-card-sm px-4 py-3 font-semibold" style="display:none"></div>
+            <ConfigForm data-config-form-component />
+          </div>
+        </section>
+      </div>
+
+      <Toast data-toast />
+    </div>
+  </main>
+</page>

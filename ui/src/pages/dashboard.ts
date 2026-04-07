@@ -4,32 +4,66 @@ import { FolderService } from "@services/folder.service";
 import { FileService } from "@services/file.service";
 import { folderNav } from "@state/folder-nav.state";
 import { toast } from "@state/toast.state";
-import type { PinModal, PinAction } from "@components/PinModal/PinModal";
-import type { ShareModal } from "@components/ShareModal/ShareModal";
+import { deleteModalState, deleteCallback, pinModalState, pinCallback, shareModalState } from "@state/modal-callbacks.state";
+import type { UploadForm } from "@components/UploadForm/UploadForm";
+import type { PinAction } from "@components/PinModal/PinModal";
 import type { FileModel } from "@models/file.model";
 import type { FolderModel } from "@models/folder.model";
 import { API_BASE } from "@config";
 
 export function init(el: HTMLElement, ctx: TinyFxContext): void {
-  let pinModal: PinModal | null = null;
-  let shareModal: ShareModal | null = null;
-
   onMount(() => {
-    pinModal = el.querySelector<PinModal>("[data-pin-modal]") as unknown as PinModal;
-    shareModal = el.querySelector<ShareModal>("[data-share-modal]") as unknown as ShareModal;
-
     const refreshBtn = el.querySelector("#refreshBtn");
-    refreshBtn?.addEventListener("click", () => loadFiles());
+    refreshBtn?.addEventListener("click", () => {
+      const icon = refreshBtn.querySelector<HTMLElement>(".refresh-icon");
+      if (icon) {
+        (refreshBtn as HTMLButtonElement).disabled = true;
+        icon.style.animation = "spin 1s linear infinite";
+        loadFiles();
+        setTimeout(() => {
+          (refreshBtn as HTMLButtonElement).disabled = false;
+          icon.style.animation = "";
+        }, 500);
+      } else {
+        loadFiles();
+      }
+    });
+
+    const uploadFormComponent = el.querySelector<UploadForm>("[data-upload-form-component]");
+    if (uploadFormComponent) {
+      uploadFormComponent.el?.addEventListener("upload:complete", () => {
+        loadFiles();
+      });
+    }
 
     loadFiles();
   });
 
   onDestroy(() => {
-    pinModal = null;
-    shareModal = null;
+    deleteCallback.set(null);
+    pinCallback.set(null);
   });
 
-  async function loadFiles(folderId?: string, pin: string = ""): void {
+  function showDeleteModal(name: string, type: "file" | "folder", onConfirm: () => void): void {
+    deleteCallback.set(onConfirm);
+    deleteModalState.set({ name, type, visible: true });
+  }
+
+  function showPinModal(action: PinAction, onSubmit: (pin: string, action: PinAction) => void): void {
+    pinCallback.set(onSubmit);
+    pinModalState.set({ action, visible: true });
+  }
+
+  function hidePinModal(): void {
+    pinModalState.set({ action: null, visible: false });
+    pinCallback.set(null);
+  }
+
+  function showShareModal(url: string): void {
+    shareModalState.set({ url, visible: true });
+  }
+
+  async function loadFiles(folderId?: string, pin: string = ""): Promise<void> {
     const targetId = folderId || folderNav.getCurrentFolderID();
     folderNav.setCurrentFolderID(targetId);
 
@@ -89,7 +123,7 @@ export function init(el: HTMLElement, ctx: TinyFxContext): void {
     if (!isRoot && folderNav.getFolderHistory().length > 0) {
       const backRow = document.createElement("tr");
       backRow.className = "folder-row back-row";
-      backRow.innerHTML = `<td colspan="4" style="cursor:pointer;font-weight:bold"><svg width="1em" height="1em" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" focusable="false" style="margin-right:0.5rem"><path d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.2 288 416 288c17.7 0 32-14.3 32-32s-14.3-32-32-32l-306.7 0L214.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg>Back to parent folder</td>`;
+      backRow.innerHTML = `<td colspan="5" style="cursor:pointer;font-weight:bold"><svg width="1em" height="1em" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" focusable="false" style="margin-right:0.5rem"><path d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.2 288 416 288c17.7 0 32-14.3 32-32s-14.3-32-32-32l-306.7 0L214.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg>Back to parent folder</td>`;
       backRow.addEventListener("click", () => navigateBack());
       tbody.appendChild(backRow);
     }
@@ -121,20 +155,29 @@ export function init(el: HTMLElement, ctx: TinyFxContext): void {
       </td>
       <td>${formatBytes(folder.size)}</td>
       <td>Folder</td>
+      <td>${new Date(folder.created_at as string).toLocaleDateString()}</td>
       <td>
         <button class="btn-link share-btn" data-url="${folderLink}">Share</button>
         <button class="btn-link primary folder-download-btn" data-folder-id="${folder.id}">Download</button>
+        <button class="btn-link delete delete-folder-btn" data-folder-id="${folder.id}" data-folder-name="${escapeHtml(folder.name)}">Delete</button>
       </td>
     `;
 
     row.querySelector(".share-btn")?.addEventListener("click", (e) => {
       e.stopPropagation();
-      shareModal?.show(folderLink);
+      showShareModal(folderLink);
     });
 
     row.querySelector(".folder-download-btn")?.addEventListener("click", (e) => {
       e.stopPropagation();
       handleFolderDownload(folder.id, folder.isProtected);
+    });
+
+    row.querySelector(".delete-folder-btn")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showDeleteModal(folder.name, "folder", () => {
+        deleteFolder(folder.id, folder.name);
+      });
     });
 
     row.addEventListener("click", (e) => {
@@ -162,9 +205,11 @@ export function init(el: HTMLElement, ctx: TinyFxContext): void {
       </td>
       <td>${formatBytes(file.size)}</td>
       <td>${file.extension || "file"}</td>
+      <td>${new Date(file.createdAt).toLocaleDateString()}</td>
       <td>
         <button class="btn-link share-btn" data-url="${downloadLink}">Share</button>
         <button class="btn-link primary download-btn" data-file-id="${file.id}">Download</button>
+        <button class="btn-link delete delete-file-btn" data-file-id="${file.id}" data-file-name="${escapeHtml(file.name)}">Delete</button>
       </td>
     `;
 
@@ -180,12 +225,19 @@ export function init(el: HTMLElement, ctx: TinyFxContext): void {
 
     row.querySelector(".share-btn")?.addEventListener("click", (e) => {
       e.stopPropagation();
-      shareModal?.show(downloadLink);
+      showShareModal(downloadLink);
     });
 
     row.querySelector(".download-btn")?.addEventListener("click", (e) => {
       e.stopPropagation();
       handleFileDownload(file.id, file.isProtected);
+    });
+
+    row.querySelector(".delete-file-btn")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showDeleteModal(file.name, "file", () => {
+        deleteFile(file.id, file.name);
+      });
     });
 
     return row;
@@ -201,7 +253,7 @@ export function init(el: HTMLElement, ctx: TinyFxContext): void {
     const backRow = document.createElement("tr");
     backRow.className = "folder-row back-row";
     backRow.style.cursor = "pointer";
-    backRow.innerHTML = `<td colspan="4" style="font-weight:bold"><svg width="1em" height="1em" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" focusable="false" style="margin-right:0.5rem"><path d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.2 288 416 288c17.7 0 32-14.3 32-32s-14.3-32-32-32l-306.7 0L214.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg>Back to parent folder</td>`;
+    backRow.innerHTML = `<td colspan="5" style="font-weight:bold"><svg width="1em" height="1em" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" focusable="false" style="margin-right:0.5rem"><path d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.2 288 416 288c17.7 0 32-14.3 32-32s-14.3-32-32-32l-306.7 0L214.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg>Back to parent folder</td>`;
     backRow.addEventListener("click", () => navigateBack());
     tbody.appendChild(backRow);
   }
@@ -213,12 +265,12 @@ export function init(el: HTMLElement, ctx: TinyFxContext): void {
   async function handleFolderNavigation(folderId: string, folderName: string, isProtected: boolean): Promise<void> {
     try {
       if (isProtected) {
-        pinModal?.show(
+        showPinModal(
           { type: "folder-open", id: folderId, name: folderName },
           (pin) => {
             folderNav.cacheFolderPin(folderId, pin);
             folderNav.navigateToFolder(folderId, folderName, pin, (id, p) => loadFiles(id, p));
-            pinModal?.hide();
+            hidePinModal();
           }
         );
         return;
@@ -231,11 +283,11 @@ export function init(el: HTMLElement, ctx: TinyFxContext): void {
 
   function handleFileDownload(fileId: string, isProtected: boolean): void {
     if (isProtected) {
-      pinModal?.show(
+      showPinModal(
         { type: "file", id: fileId },
         (pin) => {
           FileService.downloadFile(fileId, pin);
-          pinModal?.hide();
+          hidePinModal();
         }
       );
       return;
@@ -245,16 +297,36 @@ export function init(el: HTMLElement, ctx: TinyFxContext): void {
 
   function handleFolderDownload(folderId: string, isProtected: boolean): void {
     if (isProtected) {
-      pinModal?.show(
+      showPinModal(
         { type: "folder-download", id: folderId },
         (pin) => {
           FileService.downloadFolder(folderId, pin);
-          pinModal?.hide();
+          hidePinModal();
         }
       );
       return;
     }
     FileService.downloadFolder(folderId);
+  }
+
+  async function deleteFile(id: string, name: string): Promise<void> {
+    try {
+      await FileService.deleteFile(id);
+      toast.show("File deleted", "success");
+      loadFiles(folderNav.getCurrentFolderID());
+    } catch {
+      toast.show("Failed to delete file", "error");
+    }
+  }
+
+  async function deleteFolder(id: string, name: string): Promise<void> {
+    try {
+      await FolderService.deleteFolder(id);
+      toast.show("Folder deleted", "success");
+      loadFiles(folderNav.getCurrentFolderID());
+    } catch {
+      toast.show("Failed to delete folder", "error");
+    }
   }
 
   function formatBytes(bytes: number): string {
