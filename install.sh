@@ -5,6 +5,7 @@ APP_NAME="localdrop"
 INSTALL_DIR="/usr/local/bin"
 CONFIG_DIR="$HOME/.config/localdrop"
 PORT=8080
+REPO="Mo7sen007/LocalDrop"
 
 echo "Installing $APP_NAME..."
 
@@ -18,16 +19,33 @@ case "$ARCH" in
   aarch64) ARCH="arm64" ;;
   arm64) ARCH="arm64" ;;
   armv7l) ARCH="armv7" ;;
-  armv6l) ARCH="armv6" ;;
+  armv6l) echo "Unsupported architecture: armv6l (only armv7 is published)"; exit 1 ;;
   i386|i686) ARCH="386" ;;
+  *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
 esac
 
-BIN_URL="https://github.com/Mo7sen007/LocalDrop/releases/latest/download/localdrop_${OS}_${ARCH}.tar.gz"
+case "$OS" in
+  linux|darwin) ;;
+  *) echo "Unsupported OS: $OS"; exit 1 ;;
+esac
+
+ARCHIVE="localdrop_${OS}_${ARCH}.tar.gz"
+BIN_URL="https://github.com/${REPO}/releases/latest/download/${ARCHIVE}"
 
 # Download & install binary
-curl -fsSL "$BIN_URL" | tar -xz
-chmod +x localdrop
-sudo mv localdrop "$INSTALL_DIR"
+TMP_DIR=$(mktemp -d)
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+if ! curl -fL "$BIN_URL" -o "$TMP_DIR/$ARCHIVE"; then
+  echo "Failed to download $ARCHIVE from latest release"
+  echo "URL: $BIN_URL"
+  echo "Check release assets at: https://github.com/${REPO}/releases/latest"
+  exit 1
+fi
+
+tar -xzf "$TMP_DIR/$ARCHIVE" -C "$TMP_DIR"
+chmod +x "$TMP_DIR/localdrop"
+sudo mv "$TMP_DIR/localdrop" "$INSTALL_DIR"
 
 # Config directory
 mkdir -p "$CONFIG_DIR"
