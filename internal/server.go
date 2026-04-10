@@ -21,7 +21,7 @@ import (
 	"github.com/hashicorp/mdns"
 )
 
-//go:embed static/*
+//go:embed static
 var staticFS embed.FS
 
 type Server struct {
@@ -123,7 +123,31 @@ func (s *Server) setupRouter(fileHandler *handlers.FileHandler, folderHandler *h
 		serverlog.Errorf("Failed to create static sub-filesystem: %v", err)
 		return err
 	}
-	s.router.StaticFS("/static", http.FS(staticSubFS))
+	serveHTML := func(path string) gin.HandlerFunc {
+		return func(c *gin.Context) {
+			data, readErr := fs.ReadFile(staticSubFS, path)
+			if readErr != nil {
+				serverlog.Errorf("Failed to read embedded html %s: %v", path, readErr)
+				c.String(http.StatusNotFound, "page not found")
+				return
+			}
+			c.Data(http.StatusOK, "text/html; charset=utf-8", data)
+		}
+	}
+
+	cssSubFS, err := fs.Sub(staticSubFS, "css")
+	if err != nil {
+		serverlog.Errorf("Failed to create css sub-filesystem: %v", err)
+		return err
+	}
+	jsSubFS, err := fs.Sub(staticSubFS, "js")
+	if err != nil {
+		serverlog.Errorf("Failed to create js sub-filesystem: %v", err)
+		return err
+	}
+
+	s.router.StaticFS("/css", http.FS(cssSubFS))
+	s.router.StaticFS("/js", http.FS(jsSubFS))
 	s.router.MaxMultipartMemory = s.config.Storage.MaxFileSize
 
 	store := cookie.NewStore(getSecretKey())
@@ -148,14 +172,21 @@ func (s *Server) setupRouter(fileHandler *handlers.FileHandler, folderHandler *h
 		c.Next()
 	})
 
-	s.router.GET("/", func(c *gin.Context) {
-		c.FileFromFS("html/download.html", http.FS(staticSubFS))
-	})
-	s.router.GET("/download", func(c *gin.Context) {
-		c.FileFromFS("html/download.html", http.FS(staticSubFS))
-	})
-	s.router.GET("/login", func(c *gin.Context) {
-		c.FileFromFS("html/login.html", http.FS(staticSubFS))
+	s.router.GET("/", serveHTML("index.html"))
+	s.router.GET("/download", serveHTML("index.html"))
+	s.router.GET("/login", serveHTML("login/index.html"))
+	s.router.GET("/auth/status", func(c *gin.Context) {
+		session := sessions.Default(c)
+		userID := session.Get("user_id")
+		if userID == nil {
+			c.JSON(http.StatusOK, gin.H{"loggedIn": false, "authEnabled": s.config.Auth.Enabled})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"loggedIn":    true,
+			"authEnabled": s.config.Auth.Enabled,
+			"user":        userID,
+		})
 	})
 
 	s.router.GET("/rootfilesandfolders", folderHandler.GetRootFilesAndFoldersHandler)
@@ -170,27 +201,20 @@ func (s *Server) setupRouter(fileHandler *handlers.FileHandler, folderHandler *h
 
 	if s.config.Auth.Enabled {
 		authGroup := s.router.Group("/", middleware.AuthMiddleware())
-		setupProtectedRoutes(authGroup, fileHandler, folderHandler, adminHandler, uploadHandler)
+		setupProtectedRoutes(authGroup, fileHandler, folderHandler, adminHandler, uploadHandler, serveHTML)
 	} else {
-		setupProtectedRoutes(s.router.Group("/"), fileHandler, folderHandler, adminHandler, uploadHandler)
+		setupProtectedRoutes(s.router.Group("/"), fileHandler, folderHandler, adminHandler, uploadHandler, serveHTML)
 	}
 
 	return nil
 }
 
-func setupProtectedRoutes(group *gin.RouterGroup, fileHandler *handlers.FileHandler, folderHandler *handlers.FolderHandler, adminHandler *handlers.AdminHandler, uploadHandler *handlers.UploadHandler) {
-	staticSubFS, _ := fs.Sub(staticFS, "static")
-	group.GET("/dashboard", func(c *gin.Context) {
-		c.FileFromFS("html/dashboard.html", http.FS(staticSubFS))
-	})
+func setupProtectedRoutes(group *gin.RouterGroup, fileHandler *handlers.FileHandler, folderHandler *handlers.FolderHandler, adminHandler *handlers.AdminHandler, uploadHandler *handlers.UploadHandler, serveHTML func(string) gin.HandlerFunc) {
+	group.GET("/dashboard", serveHTML("dashboard/index.html"))
 
-	group.GET("/config", func(c *gin.Context) {
-		c.FileFromFS("html/config.html", http.FS(staticSubFS))
-	})
+	group.GET("/config", serveHTML("config/index.html"))
 
-	group.GET("/admin", func(c *gin.Context) {
-		c.FileFromFS("html/dashboard.html", http.FS(staticSubFS))
-	})
+	group.GET("/admin", serveHTML("dashboard/index.html"))
 
 	group.POST("/upload", uploadHandler.UploadHandler)
 	group.DELETE("/delete/file/:id", fileHandler.DeleteFileHandler)

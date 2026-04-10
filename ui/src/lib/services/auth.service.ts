@@ -1,23 +1,33 @@
 import { http } from "@services/http";
+import { SessionService } from "@services/session.service";
 
 export const AuthService = {
   async login(username: string, password: string): Promise<{ ok: boolean; error?: string }> {
     try {
-      await http.post("/login", new URLSearchParams({ username, password }), {
+      const response = await fetch("/login", {
+        method: "POST",
+        body: new URLSearchParams({ username, password }),
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        credentials: "include",
+        redirect: "follow",
       });
-      return { ok: true };
-    } catch (err) {
-      let errorMsg = "Login failed";
-      if (err && typeof err === "object" && "response" in err) {
+      if (!response.ok) {
+        let errorMsg = "Login failed";
         try {
-          const text = await ((err as Record<string, unknown>).response as Response).text();
+          const text = await response.text();
           if (text) errorMsg = text;
         } catch {
           /* ignore */
         }
+        return { ok: false, error: errorMsg };
       }
-      return { ok: false, error: errorMsg };
+      await SessionService.checkAuth();
+      if (!response.redirected && !response.url.includes("/dashboard")) {
+        return { ok: false, error: "Login failed" };
+      }
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : "Login failed" };
     }
   },
 
@@ -27,6 +37,7 @@ export const AuthService = {
     } catch {
       /* ignore */
     }
+    SessionService.markLoggedOut();
     window.location.href = "/login";
   },
 };

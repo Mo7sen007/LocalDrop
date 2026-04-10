@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LocalDrop — Server Config</title><meta name="description" content="Configure your LocalDrop server settings. Update options that control file sharing, security, and behavior."><meta name="robots" content="noindex, nofollow"><meta name="theme-color" content="#f8fafc"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap"><link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+<main class="config-page">
+    <header class="app-navbar" tinyfx-dynamic data-component="Navbar">
+  <div class="navbar-inner">
+    <div class="navbar-brand">
+      <svg width="1em" height="1em" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" focusable="false"><path d="M88.7 223.8L0 375.8 0 96C0 60.7 28.7 32 64 32l117.5 0c17 0 33.3 6.7 45.3 18.7l26.5 26.5c12 12 28.3 18.7 45.3 18.7L416 96c35.3 0 64 28.7 64 64l0 32-336 0c-22.8 0-43.8 12.1-55.3 31.8zm27.6 16.1C122.1 230 132.6 224 144 224l400 0c11.5 0 22 6.1 27.7 16.1s5.7 22.2-.1 32.1l-112 192C453.9 474 443.4 480 432 480L32 480c-11.5 0-22-6.1-27.7-16.1s-5.7-22.2 .1-32.1l112-192z"/></svg>
+      <h1>LocalDrop</h1>
+    </div>
+    <nav class="navbar-nav" data-nav-links>
+      <a class="nav-link" id="loginBtn" href="/login" hidden>Login</a>
+      <button class="nav-link danger" id="logoutBtn" hidden>
+        <svg width="1em" height="1em" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" focusable="false"><path d="M502.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-128-128c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L402.7 224 192 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l210.7 0-73.4 73.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l128-128zM160 96c17.7 0 32-14.3 32-32s-14.3-32-32-32L96 32C43 32 0 75 0 128L0 384c0 53 43 96 96 96l64 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-64 0c-17.7 0-32-14.3-32-32l0-256c0-17.7 14.3-32 32-32l64 0z"/></svg>
+        Logout
+      </button>
+    </nav>
+  </div>
+</header>
+
+
+    <div class="page-wrapper">
+      <div class="content-area">
+        <header class="page-header">
+          <h2>Server Config</h2>
+          <p class="page-description">Update LocalDrop settings. Some changes require a restart.</p>
+        </header>
+
+        <section class="retro-card" aria-label="Server configuration">
+          <div class="card-header">
+            <h3>Configuration</h3>
+            <svg width="1em" height="1em" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" focusable="false"><path d="M0 416c0 17.7 14.3 32 32 32l54.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 448c17.7 0 32-14.3 32-32s-14.3-32-32-32l-246.7 0c-12.3-28.3-40.5-48-73.3-48s-61 19.7-73.3 48L32 384c-17.7 0-32 14.3-32 32zm128 0a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zM320 256a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zm32-80c-32.8 0-61 19.7-73.3 48L32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l246.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48l54.7 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-54.7 0c-12.3-28.3-40.5-48-73.3-48zM192 128a32 32 0 1 1 0-64 32 32 0 1 1 0 64zm73.3-64C253 35.7 224.8 16 192 16s-61 19.7-73.3 48L32 64C14.3 64 0 78.3 0 96s14.3 32 32 32l86.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 128c17.7 0 32-14.3 32-32s-14.3-32-32-32L265.3 64z"/></svg>
+          </div>
+          <div class="card-body">
+            <div data-alert class="retro-card-sm px-4 py-3 font-semibold" style="display:none"></div>
+            <form class="config-form" tinyfx-dynamic data-config-form data-component="ConfigForm">
+  <div class="config-grid">
+    <div class="form-group">
+      <label for="cfg-port">Server Port</label>
+      <input type="number" id="cfg-port" class="retro-input" min="1" max="65535" required data-port>
+      <p class="form-help">Changing the port requires a restart.</p>
+    </div>
+    <div class="form-group">
+      <label for="cfg-maxSize">Max Upload Size (MB)</label>
+      <input type="number" id="cfg-maxSize" class="retro-input" min="1" required data-max-size>
+      <p class="form-help">Applied on restart for multipart limits.</p>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="cfg-basePath">Storage Base Path</label>
+    <input type="text" id="cfg-basePath" class="retro-input" required data-base-path>
+    <p class="form-help">Ensure the directory exists and is writable.</p>
+  </div>
+
+  <div class="config-grid">
+    <div class="form-group">
+      <label>Authentication</label>
+      <label class="toggle"><input type="checkbox" data-auth-enabled>Enable login protection</label>
+      <p class="form-help">When disabled, admin pages are public.</p>
+    </div>
+    <div class="form-group">
+      <label>Logging</label>
+      <label class="toggle"><input type="checkbox" data-logging-enabled>Enable logging</label>
+      <div class="mt-3">
+        <label for="cfg-loggingLevel">Logging Level</label>
+        <select id="cfg-loggingLevel" class="retro-select" data-logging-level>
+          <option value="debug">debug</option>
+          <option value="info">info</option>
+          <option value="warn">warn</option>
+          <option value="error">error</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button type="button" class="retro-btn secondary" data-reset-btn>Reset</button>
+    <button type="submit" class="retro-btn primary">
+      <svg width="1em" height="1em" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" focusable="false" class="tinyfx-fa tinyfx-fa-fa-solid-fa-floppy-disk"><path d="M64 32h320l64 64v384H64zM128 96v96h192V96zM128 288v96h256v-96z"/></svg>
+      Save Changes
+    </button>
+  </div>
+</form>
+
+          </div>
+        </section>
+      </div>
+
+      <div class="toast" tinyfx-dynamic role="status" aria-live="polite" aria-atomic="true" data-component="Toast">
+  <div class="toast-content">
+    <span class="toast-icon"></span>
+    <span class="toast-message"></span>
+  </div>
+</div>
+
+    </div>
+  </main>
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>

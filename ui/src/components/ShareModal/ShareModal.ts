@@ -2,6 +2,11 @@ import { signal, effect } from "@tinyfx/runtime";
 import type { TinyFxContext } from "@tinyfx/runtime";
 import { shareModalState } from "@state/modal-callbacks.state";
 
+function buildQrImageUrl(value: string): string {
+  const encoded = encodeURIComponent(value);
+  return `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encoded}`;
+}
+
 export class ShareModal {
   visible = signal<boolean>(false);
   shareUrl = signal<string>("");
@@ -35,18 +40,17 @@ export class ShareModal {
       const qrContainer = this.el.querySelector<HTMLElement>("[data-qr]");
       if (qrContainer && this.visible() && this.shareUrl()) {
         qrContainer.innerHTML = "";
-        if (typeof (window as Record<string, unknown>).QRCode === "function") {
-          try {
-            new ((window as Record<string, unknown>).QRCode as new (el: HTMLElement, opts: Record<string, unknown>) => void)(
-              qrContainer,
-              { text: this.shareUrl(), width: 240, height: 240, correctLevel: 3 },
-            );
-          } catch {
-            qrContainer.textContent = this.shareUrl();
-          }
-        } else {
+        const img = document.createElement("img");
+        img.src = buildQrImageUrl(this.shareUrl());
+        img.width = 240;
+        img.height = 240;
+        img.alt = "QR code for share link";
+        img.loading = "eager";
+        img.referrerPolicy = "no-referrer";
+        img.onerror = () => {
           qrContainer.textContent = this.shareUrl();
-        }
+        };
+        qrContainer.appendChild(img);
       }
     });
 

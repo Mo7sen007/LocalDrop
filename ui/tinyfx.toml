@@ -5,7 +5,7 @@ entry_ts   = "src/main.ts"
 styles     = "src/styles"
 
 # Output
-out_dir = "dist"
+out_dir = "../internal/static"
 
 # Dev server
 [server]
