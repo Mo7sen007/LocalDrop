@@ -4,19 +4,17 @@ import { FolderService } from "@services/folder.service";
 import { FileService } from "@services/file.service";
 import { folderNav } from "@state/folder-nav.state";
 import { toast } from "@state/toast.state";
+import { shareModalState } from "@state/modal-callbacks.state";
 import type { PinModal, PinAction } from "@components/PinModal/PinModal";
-import type { ShareModal } from "@components/ShareModal/ShareModal";
 import type { FileModel } from "@models/file.model";
 import type { FolderModel } from "@models/folder.model";
 import { API_BASE } from "@config";
 
 export function init(el: HTMLElement, ctx: TinyFxContext): void {
   let pinModal: PinModal | null = null;
-  let shareModal: ShareModal | null = null;
 
   onMount(() => {
     pinModal = el.querySelector<PinModal>("[data-pin-modal]") as unknown as PinModal;
-    shareModal = el.querySelector<ShareModal>("[data-share-modal]") as unknown as ShareModal;
 
     const refreshBtn = el.querySelector("#refreshBtn");
     refreshBtn?.addEventListener("click", () => loadFiles());
@@ -26,8 +24,11 @@ export function init(el: HTMLElement, ctx: TinyFxContext): void {
 
   onDestroy(() => {
     pinModal = null;
-    shareModal = null;
   });
+
+  function showShareModal(url: string): void {
+    shareModalState.set({ url, visible: true });
+  }
 
   async function loadFiles(folderId?: string, pin: string = ""): void {
     const targetId = folderId || folderNav.getCurrentFolderID();
@@ -129,7 +130,7 @@ export function init(el: HTMLElement, ctx: TinyFxContext): void {
 
     row.querySelector(".share-btn")?.addEventListener("click", (e) => {
       e.stopPropagation();
-      shareModal?.show(folderLink);
+      showShareModal(folderLink);
     });
 
     row.querySelector(".folder-download-btn")?.addEventListener("click", (e) => {
@@ -180,7 +181,7 @@ export function init(el: HTMLElement, ctx: TinyFxContext): void {
 
     row.querySelector(".share-btn")?.addEventListener("click", (e) => {
       e.stopPropagation();
-      shareModal?.show(downloadLink);
+      showShareModal(downloadLink);
     });
 
     row.querySelector(".download-btn")?.addEventListener("click", (e) => {

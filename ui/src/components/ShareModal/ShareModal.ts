@@ -1,15 +1,12 @@
 import { signal, effect } from "@tinyfx/runtime";
 import type { TinyFxContext } from "@tinyfx/runtime";
 import { shareModalState } from "@state/modal-callbacks.state";
-
-function buildQrImageUrl(value: string): string {
-  const encoded = encodeURIComponent(value);
-  return `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encoded}`;
-}
+import qrcode from "@services/qrcode.vendor.js";
 
 export class ShareModal {
   visible = signal<boolean>(false);
   shareUrl = signal<string>("");
+  qrDataUrl = signal<string>("");
 
   constructor(public el: HTMLElement, public ctx: TinyFxContext) {}
 
@@ -19,6 +16,8 @@ export class ShareModal {
       this.visible.set(state.visible);
       if (state.visible) {
         this.shareUrl.set(state.url);
+      } else {
+        this.qrDataUrl.set("");
       }
     });
 
@@ -38,20 +37,33 @@ export class ShareModal {
 
     effect(() => {
       const qrContainer = this.el.querySelector<HTMLElement>("[data-qr]");
-      if (qrContainer && this.visible() && this.shareUrl()) {
+      if (!qrContainer) return;
+
+      if (!this.visible() || !this.shareUrl()) {
         qrContainer.innerHTML = "";
-        const img = document.createElement("img");
-        img.src = buildQrImageUrl(this.shareUrl());
-        img.width = 240;
-        img.height = 240;
-        img.alt = "QR code for share link";
-        img.loading = "eager";
-        img.referrerPolicy = "no-referrer";
-        img.onerror = () => {
-          qrContainer.textContent = this.shareUrl();
-        };
-        qrContainer.appendChild(img);
+        return;
       }
+
+      const dataUrl = this.getQrDataUrl(this.shareUrl());
+      this.qrDataUrl.set(dataUrl);
+
+      qrContainer.innerHTML = "";
+      if (!dataUrl) {
+        qrContainer.textContent = this.shareUrl();
+        return;
+      }
+
+      const img = document.createElement("img");
+      img.src = dataUrl;
+      img.width = 240;
+      img.height = 240;
+      img.alt = "QR code for share link";
+      img.loading = "eager";
+      img.decoding = "async";
+      img.onerror = () => {
+        qrContainer.textContent = this.shareUrl();
+      };
+      qrContainer.appendChild(img);
     });
 
     this.el.addEventListener("click", (e) => {
@@ -96,7 +108,19 @@ export class ShareModal {
 
   hide(): void {
     this.visible.set(false);
+    this.qrDataUrl.set("");
     shareModalState.set({ url: "", visible: false });
+  }
+
+  private getQrDataUrl(value: string): string {
+    try {
+      const qr = qrcode(0, "M");
+      qr.addData(value, "Byte");
+      qr.make();
+      return qr.createDataURL(6, 2);
+    } catch {
+      return "";
+    }
   }
 }
 

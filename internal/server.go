@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/Mo7sen007/LocalDrop/internal/config"
 	"github.com/Mo7sen007/LocalDrop/internal/handlers"
@@ -109,14 +110,21 @@ func getGinMod() string {
 	if config.IsProduction() {
 		return gin.ReleaseMode
 	}
-	return gin.DebugMode
+	return gin.ReleaseMode
 }
 
 func (s *Server) setupRouter(fileHandler *handlers.FileHandler, folderHandler *handlers.FolderHandler, adminHandler *handlers.AdminHandler, uploadHandler *handlers.UploadHandler) error {
 
 	gin.SetMode(getGinMod())
 
-	s.router = gin.Default()
+	s.router = gin.New()
+	s.router.Use(gin.Recovery())
+	if s.config.Logging.Enabled {
+		level := serverlogLevel(s.config.Logging.Level)
+		if level == "debug" || level == "info" {
+			s.router.Use(gin.Logger())
+		}
+	}
 
 	staticSubFS, err := fs.Sub(staticFS, "static")
 	if err != nil {
@@ -207,6 +215,14 @@ func (s *Server) setupRouter(fileHandler *handlers.FileHandler, folderHandler *h
 	}
 
 	return nil
+}
+
+func serverlogLevel(level string) string {
+	value := strings.ToLower(strings.TrimSpace(level))
+	if value == "" {
+		return "info"
+	}
+	return value
 }
 
 func setupProtectedRoutes(group *gin.RouterGroup, fileHandler *handlers.FileHandler, folderHandler *handlers.FolderHandler, adminHandler *handlers.AdminHandler, uploadHandler *handlers.UploadHandler, serveHTML func(string) gin.HandlerFunc) {
