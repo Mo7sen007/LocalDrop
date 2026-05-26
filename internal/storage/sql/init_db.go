@@ -12,7 +12,7 @@ import (
 )
 
 func Init() (*sql.DB, error) {
-	var rootFolderID = "00000000-0000-0000-0000-000000000000"
+	rootFolderID := "00000000-0000-0000-0000-000000000000"
 	var err error
 	dbPath, err := paths.GetFilesPath()
 	if err != nil {
@@ -27,6 +27,7 @@ func Init() (*sql.DB, error) {
 	}
 
 	db.SetMaxOpenConns(1)
+	db.Exec("PRAGMA journal_mode=WAL;")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()

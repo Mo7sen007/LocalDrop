@@ -91,6 +91,16 @@ func (r *SQLRepository) UpdateFolder(newFolder *models.Folder, folderID uuid.UUI
 	return tx.Commit()
 }
 
+func (r *SQLRepository) GetFolderIDByPath(path string) (*uuid.UUID, error) {
+	var idStr string
+	err := r.db.QueryRow(`SELECT id FROM folders WHERE path = ?`, path).Scan(&idStr)
+	if err != nil {
+		return nil, err
+	}
+	id := uuid.MustParse(idStr)
+	return &id, nil
+}
+
 func (r *SQLRepository) GetFolderByNameAndParent(name string, parentID *uuid.UUID) (*models.Folder, error) {
 
 	var folder models.Folder

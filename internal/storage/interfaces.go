@@ -8,6 +8,8 @@ import (
 type FolderRepository interface {
 	// GetFolderByID returns a folder by its ID.
 	GetFolderByID(folderId uuid.UUID) (*models.Folder, error)
+	// GetFolderIDByPath returns a folder ID by its path.
+	GetFolderIDByPath(path string) (*uuid.UUID, error)
 	// GetFolderByNameAndParent returns a folder by its name and parent ID.
 	GetFolderByNameAndParent(name string, parentId *uuid.UUID) (*models.Folder, error)
 	// GetSubFolders returns the subfolders of a folder by its ID.

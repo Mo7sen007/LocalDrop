@@ -20,6 +20,18 @@ Built with Go and Gin, LocalDrop provides a simple web interface for uploading a
 
 ---
 
+## Screenshots
+
+| Landing Page | Dashboard |
+|---|---|
+| ![Landing Page](images/lanfing_page) | ![Dashboard](images/dashboard.png) |
+
+| Configuration |
+|---|
+| ![Configuration](images/config.png) |
+
+---
+
 ## Installation
 
 ### Option 1: Install via Go (Recommended)
