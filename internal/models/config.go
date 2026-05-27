@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"strings"
 )
 
 type Config struct {
@@ -65,11 +66,17 @@ func (c *Config) ApplyOverrides(port int, authEnabled *bool, loggingLevel string
 }
 
 func (c *Config) Validate() error {
+	c.Logging.Level = strings.ToLower(strings.TrimSpace(c.Logging.Level))
+
 	if c.App.Port <= 0 || c.App.Port > 65535 {
 		return fmt.Errorf("invalid server.port: %d", c.App.Port)
 	}
 	if c.Storage.BasePath == "" {
 		return fmt.Errorf("storage.base_path is required")
+	}
+	validLevels := map[string]bool{"debug": true, "info": true, "warn": true, "warning": true, "error": true}
+	if !validLevels[c.Logging.Level] {
+		return fmt.Errorf("invalid logging.logging_level: %q (valid: debug, info, warn, error)", c.Logging.Level)
 	}
 	return nil
 }

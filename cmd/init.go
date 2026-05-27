@@ -64,18 +64,8 @@ func runInit() error {
 	}
 
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Create admin account now? (y/N): ")
-	choice, err := readLine(reader)
-	if err != nil {
-		return err
-	}
-	choice = strings.ToLower(strings.TrimSpace(choice))
-	if choice != "y" && choice != "yes" {
-		fmt.Println("Skipping admin creation.")
-		return nil
-	}
 
-	userName, err := promptNonEmpty(reader, "Enter the username: ")
+	userName, err := promptNonEmpty(reader, "Enter the admin username: ")
 	if err != nil {
 		return err
 	}

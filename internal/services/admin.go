@@ -2,7 +2,6 @@ package services
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/Mo7sen007/LocalDrop/internal/storage"
 	"golang.org/x/crypto/bcrypt"
@@ -25,7 +24,7 @@ func (s *AdminService) AuthAdmin(userName, plainPassword, path string) (bool, er
 
 	admin, err := s.repo.GetAdminByUsername(userName)
 	if err != nil {
-		return false, fmt.Errorf("faild to get admin:%w", err)
+		return false, ErrUserNotFound
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(plainPassword))
