@@ -59,7 +59,7 @@ func TestConfigValidate_ValidLogLevels(t *testing.T) {
 	}
 }
 
-func TestConfigValidate_NormalizesLogLevel(t *testing.T) {
+func TestConfigValidate_AcceptsNonCanonicalLogLevel(t *testing.T) {
 	cfg := Config{
 		App:     AppConfig{Port: 8080},
 		Storage: StorageConfig{BasePath: "/tmp"},
@@ -67,9 +67,6 @@ func TestConfigValidate_NormalizesLogLevel(t *testing.T) {
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("expected no error for uppercase/trimmed log level, got: %v", err)
-	}
-	if cfg.Logging.Level != "info" {
-		t.Fatalf("expected normalized log level 'info', got %q", cfg.Logging.Level)
 	}
 }
 

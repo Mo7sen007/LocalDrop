@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Mo7sen007/LocalDrop/internal/models"
 	"github.com/Mo7sen007/LocalDrop/internal/paths"
@@ -58,6 +59,8 @@ func GetConfig() (models.Config, error) {
 }
 
 func SaveConfig(c *models.Config) error {
+	c.Logging.Level = strings.ToLower(strings.TrimSpace(c.Logging.Level))
+
 	configPath, err := paths.GetConfigPath()
 	if err != nil {
 		serverlog.Errorf("Couldn't get config file path, error:%v", err)
